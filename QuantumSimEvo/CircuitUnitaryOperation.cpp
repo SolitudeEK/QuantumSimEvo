@@ -1,0 +1,367 @@
+#include "CircuitUnitaryOperation.h"
+#include <omp.h>
+#include <complex>
+#include "Structurs.h"
+#include <vector>
+#include <chrono>
+#include <iostream>
+#include <immintrin.h>
+
+void CircuitUnitaryOperation::applyGate(StateVector& sv, const Gate2x2& gate, size_t q) {
+    std::vector<std::complex<double>>& amplitudes = sv.data();
+    size_t N = sv.qubits();
+    size_t size = sv.size();
+
+    size_t sectionSize = 1ULL << q;
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    #pragma omp parallel for
+    for (std::ptrdiff_t i = 0; i < (size >> 1); ++i) {
+        // Bit manipulation to find the pair of indices (i0, i1) 
+        // affected by the gate on qubit q
+        size_t i0 = ((i >> q) << (q + 1)) | (i & (sectionSize - 1));
+        size_t i1 = i0 | sectionSize;
+ 
+        std::complex<double> low = amplitudes[i0];
+        std::complex<double> high = amplitudes[i1];
+
+        amplitudes[i0] = gate.data[0][0] * low + gate.data[0][1] * high;
+        amplitudes[i1] = gate.data[1][0] * low + gate.data[1][1] * high;
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> ms = end - start;
+    std::cout << "Gate applied in: " << ms.count() << " ms \n"; //Debug timing
+}
+
+void CircuitUnitaryOperation::applyCNOT(StateVector& sv, size_t control, size_t target) {
+    std::vector<std::complex<double>>& states = sv.data();
+    size_t size = sv.size();
+    size_t ctrlMask = 1ULL << control;
+    size_t tgtMask = 1ULL << target;
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    #pragma omp parallel for
+    for (std::ptrdiff_t i = 0; i < size; ++i) {
+        // Apply X to target ONLY if control bit is 1 
+        // and we haven't processed this pair yet (i < (i ^ tgtMask))
+        if ((i & ctrlMask) && (i < (i ^ tgtMask))) {
+            std::swap(states[i], states[i ^ tgtMask]);
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> ms = end - start;
+    std::cout << "CNOT applied in: " << ms.count() << " ms \n"; //Debug timing
+}
+
+void CircuitUnitaryOperation::applyPauliX(StateVector& sv, size_t q) {
+    std::vector<std::complex<double>>& states = sv.data();
+    size_t size = sv.size();
+    size_t mask = 1ULL << q;
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    #pragma omp parallel for
+    for (std::ptrdiff_t i = 0; i < size; ++i) {
+        if (!(i & mask)) {
+            std::swap(states[i], states[i | mask]);
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> ms = end - start;
+    std::cout << "PauliX applied in: " << ms.count() << " ms \n"; //Debug timing
+}
+
+void CircuitUnitaryOperation::applyHadamard(StateVector& sv, size_t targetQubit) {
+    std::vector<Complex>& state = sv.data();
+    size_t stateSize = sv.size();
+
+    //Precompute the scalar constant (1/sqrt(2))
+    const double s = 0.7071067811865475244;
+
+    size_t step = 1ULL << targetQubit;
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    #pragma omp parallel for
+    for (std::ptrdiff_t i = 0; i < stateSize; i += 2 * step) {
+        for (size_t j = i; j < i + step; ++j) {
+            size_t idx_zero = j;
+            size_t idx_one = j + step;
+
+            Complex v0 = state[idx_zero];
+            Complex v1 = state[idx_one];
+
+            state[idx_zero] = s * (v0 + v1);
+            state[idx_one] = s * (v0 - v1);
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> ms = end - start;
+    std::cout << "Hadamard applied in: " << ms.count() << " ms \n"; //Debug timing
+}
+
+void CircuitUnitaryOperation::applyHadamardAVX(StateVector& sv, size_t targetQubit)
+{
+    auto& state = sv.data();
+    const size_t size = sv.size();
+
+    const double invSqrt2 = 0.7071067811865475244;
+    const __m256d vec_s = _mm256_set1_pd(invSqrt2);
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    if (targetQubit >= 1) {
+
+        const size_t mask = 1ULL << targetQubit;
+        size_t num_sections = size >> (targetQubit + 1);
+
+        #pragma omp parallel for schedule(static)
+        for (std::ptrdiff_t s = 0; s < num_sections; ++s) {
+            size_t base = s << (targetQubit + 1);
+            for (size_t k = 0; k < mask; k += 2) {
+                size_t i = base + k;
+                size_t j = i + mask;
+
+                __m256d v0 = _mm256_loadu_pd((double*)&state[i]);
+                __m256d v1 = _mm256_loadu_pd((double*)&state[j]);
+
+                __m256d sum = _mm256_add_pd(v0, v1);
+                __m256d diff = _mm256_sub_pd(v0, v1);
+
+                _mm256_storeu_pd((double*)&state[i], _mm256_mul_pd(sum, vec_s));
+                _mm256_storeu_pd((double*)&state[j], _mm256_mul_pd(diff, vec_s));
+            }
+        }
+    }
+    else {
+        #pragma omp parallel for schedule(static)
+        for (std::ptrdiff_t i = 0; i < size; i += 2) {
+            __m256d v = _mm256_loadu_pd((double*)&state[i]);
+
+            // v_low  = [R0, I0, R0, I0]
+            // v_high = [R1, I1, R1, I1]
+            __m256d v_low = _mm256_permute2f128_pd(v, v, 0x00);
+            __m256d v_high = _mm256_permute2f128_pd(v, v, 0x11);
+
+            __m256d res_sum = _mm256_add_pd(v_low, v_high); // [R0+R1, I0+I1, R0+R1, I0+I1]
+            __m256d res_diff = _mm256_sub_pd(v_low, v_high); // [R0-R1, I0-I1, R0-R1, I0-I1]
+
+            // Combine them: [ (R0+R1)s, (I0+I1)s, (R0-R1)s, (I0-I1)s ]
+            __m256d result = _mm256_blend_pd(res_sum, res_diff, 0x0C); // 0x0C binary: 1100
+            _mm256_storeu_pd((double*)&state[i], _mm256_mul_pd(result, vec_s));
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> ms = end - start;
+    std::cout << "HadamardAVX applied in: " << ms.count() << " ms\n";
+}
+
+void CircuitUnitaryOperation::applyPhase(StateVector& sv, size_t q, double theta) {
+    // Phase gates only modify the |1> state, so we only touch half the vector
+    std::vector<std::complex<double>>& states = sv.data();
+    size_t size = sv.size();
+    size_t mask = 1ULL << q;
+    std::complex<double> phase = std::exp(std::complex<double>(0, theta));
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+     #pragma omp parallel for
+    for (std::ptrdiff_t i = 0; i < size; ++i) {
+        if (i & mask) {
+            states[i] *= phase;
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> ms = end - start;
+    std::cout << "Phase applied in: " << ms.count() << " ms \n"; //Debug timing
+}
+
+void CircuitUnitaryOperation::applyPauliY(StateVector& sv, size_t q) {
+    std::vector<std::complex<double>>& states = sv.data();
+    size_t size = sv.size();
+    size_t mask = 1ULL << q;
+    const Complex I(0.0, 1.0);
+   
+    auto start = std::chrono::high_resolution_clock::now();
+
+    #pragma omp parallel for
+    for (std::ptrdiff_t i = 0; i < size; ++i) {
+        if (!(i & mask)) {
+            uint64_t idx0 = i;
+            uint64_t idx1 = i | mask;
+
+            Complex val0 = states[idx0];
+            Complex val1 = states[idx1];
+
+            states[idx0] = -I * val1;
+            states[idx1] = I * val0;
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> ms = end - start;
+    std::cout << "PauliY applied in: " << ms.count() << " ms \n"; //Debug timing
+}
+
+void CircuitUnitaryOperation::applyPauliZ(StateVector& sv, size_t q) {
+	std::vector<std::complex<double>>& states = sv.data();
+	size_t size = sv.size();
+	size_t mask = 1ULL << q;
+
+	auto start = std::chrono::high_resolution_clock::now();
+
+    #pragma omp parallel for
+    for( std::ptrdiff_t i = 0; i < size; ++i) {
+        if (i & mask)
+			states[i] = -states[i]; // negation faster than multiplication by -1.0
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> ms = end - start;
+	std::cout << "PauliZ applied in: " << ms.count() << " ms \n"; //Debug timing
+}
+
+void CircuitUnitaryOperation::applyPauliZAVX(StateVector& sv, size_t q) {
+    std::vector<std::complex<double>>& states = sv.data();
+    size_t size = sv.size();
+    size_t mask = 1ULL << q;
+    __m256d sign_mask = _mm256_set1_pd(-0.0);
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    #pragma omp parallel for
+    for (std::ptrdiff_t i = 0; i < size; i+=2) {
+        if (i & mask){
+            __m256d data = _mm256_loadu_pd((double*)&states[i]);
+
+            data = _mm256_xor_pd(data, sign_mask);
+            _mm256_storeu_pd((double*)&states[i], data);
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> ms = end - start;
+    std::cout << "PauliZAVX applied in: " << ms.count() << " ms \n"; //Debug timing
+}
+
+void CircuitUnitaryOperation::applyRotateX(StateVector& sv, size_t target, double theta) {
+    std::vector<Complex>& states = sv.data();
+    size_t size = sv.size();
+    uint64_t mask = 1ULL << target;
+
+    double c = std::cos(theta / 2.0);
+    double s = std::sin(theta / 2.0);
+    const Complex miS(0, -s); // -i * sin(theta/2)
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    #pragma omp parallel for
+    for (std::ptrdiff_t i = 0; i < size; ++i) {
+        if (!(i & mask)) {
+            uint64_t idx0 = i;
+            uint64_t idx1 = i | mask;
+
+            Complex v0 = states[idx0];
+            Complex v1 = states[idx1];
+
+            states[idx0] = c * v0 + miS * v1;
+            states[idx1] = miS * v0 + c * v1;
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> ms = end - start;
+    std::cout << "RotateX applied in: " << ms.count() << " ms \n"; //Debug timing
+}
+
+void CircuitUnitaryOperation::applyRotateY(StateVector& sv, size_t target, double theta) {
+    std::vector<Complex>& states = sv.data();
+    size_t size = sv.size();
+    uint64_t mask = 1ULL << target;
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    double c = std::cos(theta / 2.0);
+    double s = std::sin(theta / 2.0);
+
+    #pragma omp parallel for
+    for (std::ptrdiff_t i = 0; i < size; ++i) {
+        if (!(i & mask)) {
+            uint64_t idx0 = i;
+            uint64_t idx1 = i | mask;
+
+            Complex v0 = states[idx0];
+            Complex v1 = states[idx1];
+
+            states[idx0] = c * v0 - s * v1;
+            states[idx1] = s * v0 + c * v1;
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> ms = end - start;
+    std::cout << "RotateY applied in: " << ms.count() << " ms \n"; //Debug timing
+}
+
+void CircuitUnitaryOperation::applyRotateYAVX(StateVector& sv, size_t target, double theta) {
+    auto& states = sv.data();
+    size_t size = sv.size();
+    uint64_t step = 1ULL << target;
+
+    double c = std::cos(theta / 2.0);
+    double s = std::sin(theta / 2.0);
+    __m256d vec_c = _mm256_set1_pd(c);
+    __m256d vec_s = _mm256_set1_pd(s);
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    #pragma omp parallel for
+    for (std::ptrdiff_t i = 0; i < size; i += 2 * step) {
+        for (uint64_t j = i; j < i + step; j += 2) {
+            __m256d v0 = _mm256_loadu_pd((double*)&states[j]);
+            __m256d v1 = _mm256_loadu_pd((double*)&states[j + step]);
+
+            __m256d res0 = _mm256_sub_pd(_mm256_mul_pd(vec_c, v0), _mm256_mul_pd(vec_s, v1));
+            __m256d res1 = _mm256_add_pd(_mm256_mul_pd(vec_s, v0), _mm256_mul_pd(vec_c, v1));
+
+            _mm256_storeu_pd((double*)&states[j], res0);
+            _mm256_storeu_pd((double*)&states[j + step], res1);
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> ms = end - start;
+    std::cout << "RotateYAVX applied in: " << ms.count() << " ms \n"; //Debug timing
+}
+
+void CircuitUnitaryOperation::applyRotateZ(StateVector& sv, size_t target, double theta) {
+    std::vector<Complex>& states = sv.data();
+    size_t size = sv.size();
+    uint64_t mask = 1ULL << target;
+
+    // Precompute phase factors outside the loop
+    Complex phase0 = std::exp(Complex(0, -theta / 2.0));
+    Complex phase1 = std::exp(Complex(0, theta / 2.0));
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    #pragma omp parallel for
+    for (std::ptrdiff_t i = 0; i < size; ++i) {
+        if (i & mask)
+            states[i] *= phase1;
+        else
+            states[i] *= phase0;
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> ms = end - start;
+    std::cout << "RotateZ applied in: " << ms.count() << " ms \n"; //Debug timing
+}

@@ -1,0 +1,71 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Hardware">
+      <UniqueIdentifier>{c0ab0bec-57f1-40a2-8c60-f9a2d3827248}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sim">
+      <UniqueIdentifier>{748a7e59-69ab-4e2e-a0dd-b280f71e762d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sim\Header">
+      <UniqueIdentifier>{9839cc09-a467-4bda-b9b1-07e252fe680e}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="HardwareCheck.cpp">
+      <Filter>Hardware</Filter>
+    </ClCompile>
+    <ClCompile Include="StateVector.cpp">
+      <Filter>Sim</Filter>
+    </ClCompile>
+    <ClCompile Include="QubitUnitaryOperation.cpp">
+      <Filter>Sim</Filter>
+    </ClCompile>
+    <ClCompile Include="Circuit.cpp">
+      <Filter>Sim</Filter>
+    </ClCompile>
+    <ClCompile Include="CircuitUnitaryOperation.cpp">
+      <Filter>Sim</Filter>
+    </ClCompile>
+    <ClCompile Include="Dirac.cpp">
+      <Filter>Sim</Filter>
+    </ClCompile>
+    <ClCompile Include="Structurs.h">
+      <Filter>Sim</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="HardwareCheck.h">
+      <Filter>Hardware</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="Circuit.h">
+      <Filter>Sim\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="CircuitUnitaryOperation.h">
+      <Filter>Sim\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="Dirac.h">
+      <Filter>Sim\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="QubitUnitaryOperation.h">
+      <Filter>Sim\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="StateVector.h">
+      <Filter>Sim\Header</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="QuantumSimEvo.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

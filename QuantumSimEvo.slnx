@@ -1,0 +1,10 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="QSEplayground/QSEplayground.vcxproj" Id="a1bcd2e2-c32b-46ea-861e-0c63c86abf16" />
+  <Project Path="QSEPythonModule/QSEPythonModule.vcxproj" Id="f67a6e01-3f71-4e48-aba7-8dca9c6e8a64" />
+  <Project Path="QSETests/QSETests.vcxproj" Id="9d42fc33-f65a-4ced-8d42-6a13ff6de0c0" />
+  <Project Path="QuantumSimEvo/QuantumSimEvo.vcxproj" Id="694ac552-6f5f-4fab-9237-e4c25f80bcde" />
+</Solution>

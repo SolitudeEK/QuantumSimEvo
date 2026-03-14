@@ -20,6 +20,7 @@ private:
     size_t numQubits;
     StateVector stateVector;
     std::vector<GateCommand> commands;
+    std::unique_ptr<ICircuitUnitaryOperation> circuitOp;
 
 public:
     // Constructor

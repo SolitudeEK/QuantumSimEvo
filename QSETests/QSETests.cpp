@@ -95,7 +95,7 @@ private:
     }
 
     bool testRotateX() {
-        double theta = PI / 2.0; // 90 degrees
+        double theta = PI / 2.0;
         double c_val = std::cos(theta / 2.0);
         double s_val = std::sin(theta / 2.0);
         return validate("RotateX", [theta](Circuit& c) { c.rotateX(theta, 0); },
@@ -184,7 +184,7 @@ public:
         benchmarkResults.push_back(benchmark("RotateY   ", [](Circuit& c) { c.rotateY(PI / 2.0, 0); }));
         benchmarkResults.push_back(benchmark("RotateZ   ", [](Circuit& c) { c.rotateZ(PI / 2.0, 0); }));
 
-		std::cout << "\n------- Benchmark Summary for " << n << " Qubits ------_\n";
+		std::cout << "\n------- Benchmark Summary for " << n << " Qubits -------\n";
         std::cout << "-----------------------------------------------\n";
         for (const auto& res : benchmarkResults) {
             std::cout << res;

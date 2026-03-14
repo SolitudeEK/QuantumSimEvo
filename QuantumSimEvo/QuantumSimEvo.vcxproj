@@ -137,6 +137,8 @@
   <ItemGroup>
     <ClCompile Include="Circuit.cpp" />
     <ClCompile Include="CircuitUnitaryOperation.cpp" />
+    <ClCompile Include="CircuitUnitaryOperationAVX.cpp" />
+    <ClCompile Include="CircuitUnitaryOperationFactory.cpp" />
     <ClCompile Include="Dirac.cpp" />
     <ClCompile Include="HardwareCheck.cpp" />
     <ClCompile Include="QubitUnitaryOperation.cpp" />
@@ -146,10 +148,13 @@
   <ItemGroup>
     <ClInclude Include="Circuit.h" />
     <ClInclude Include="CircuitUnitaryOperation.h" />
+    <ClInclude Include="CircuitUnitaryOperationAVX.h" />
+    <ClInclude Include="CircuitUnitaryOperationFactory.h" />
     <ClInclude Include="Dirac.h" />
     <ClInclude Include="HardwareCheck.h">
       <DeploymentContent>false</DeploymentContent>
     </ClInclude>
+    <ClInclude Include="ICircuitUnitaryOperation.h" />
     <ClInclude Include="QubitUnitaryOperation.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="StateVector.h" />

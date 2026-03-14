@@ -18,6 +18,9 @@
     <Filter Include="Sim\Header">
       <UniqueIdentifier>{9839cc09-a467-4bda-b9b1-07e252fe680e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Sim\Interfaces">
+      <UniqueIdentifier>{207343e9-d176-4118-b9cd-eda7bdeacc88}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="HardwareCheck.cpp">
@@ -41,6 +44,12 @@
     <ClCompile Include="Structurs.h">
       <Filter>Sim</Filter>
     </ClCompile>
+    <ClCompile Include="CircuitUnitaryOperationAVX.cpp">
+      <Filter>Sim</Filter>
+    </ClCompile>
+    <ClCompile Include="CircuitUnitaryOperationFactory.cpp">
+      <Filter>Sim</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="HardwareCheck.h">
@@ -60,6 +69,15 @@
       <Filter>Sim\Header</Filter>
     </ClInclude>
     <ClInclude Include="StateVector.h">
+      <Filter>Sim\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="ICircuitUnitaryOperation.h">
+      <Filter>Sim\Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="CircuitUnitaryOperationAVX.h">
+      <Filter>Sim\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="CircuitUnitaryOperationFactory.h">
       <Filter>Sim\Header</Filter>
     </ClInclude>
   </ItemGroup>

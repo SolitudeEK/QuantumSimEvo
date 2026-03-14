@@ -183,6 +183,7 @@ public:
         benchmarkResults.push_back(benchmark("RotateX   ", [](Circuit& c) { c.rotateX(PI / 2.0, 0); }));
         benchmarkResults.push_back(benchmark("RotateY   ", [](Circuit& c) { c.rotateY(PI / 2.0, 0); }));
         benchmarkResults.push_back(benchmark("RotateZ   ", [](Circuit& c) { c.rotateZ(PI / 2.0, 0); }));
+		benchmarkResults.push_back(benchmark("CNOT      ", [](Circuit& c) { c.cnot(0, 1); }));
 
 		std::cout << "\n------- Benchmark Summary for " << n << " Qubits -------\n";
         std::cout << "-----------------------------------------------\n";

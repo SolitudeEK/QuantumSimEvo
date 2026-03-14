@@ -3,9 +3,9 @@
 #include <iostream>
 #include <immintrin.h>
 
-void CircuitUnitaryOperationAVX::applyHadamard(StateVector& sv, size_t targetQubit)
+void CircuitUnitaryOperationAVX::applyHadamard(StateVector& sv, size_t target)
 {
-    auto& state = sv.data();
+    auto& states = sv.data();
     const size_t size = sv.size();
 
     const double invSqrt2 = 0.7071067811865475244;
@@ -13,33 +13,33 @@ void CircuitUnitaryOperationAVX::applyHadamard(StateVector& sv, size_t targetQub
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    if (targetQubit >= 1) {
+    if (target >= 1) {
 
-        const size_t mask = 1ULL << targetQubit;
-        size_t num_sections = size >> (targetQubit + 1);
+        const size_t mask = 1ULL << target;
+        size_t num_sections = size >> (target + 1);
 
-#pragma omp parallel for schedule(static)
+        #pragma omp parallel for schedule(static)
         for (std::ptrdiff_t s = 0; s < num_sections; ++s) {
-            size_t base = s << (targetQubit + 1);
+            size_t base = s << (target + 1);
             for (size_t k = 0; k < mask; k += 2) {
                 size_t i = base + k;
                 size_t j = i + mask;
 
-                __m256d v0 = _mm256_loadu_pd((double*)&state[i]);
-                __m256d v1 = _mm256_loadu_pd((double*)&state[j]);
+                __m256d v0 = _mm256_loadu_pd((double*)&states[i]);
+                __m256d v1 = _mm256_loadu_pd((double*)&states[j]);
 
                 __m256d sum = _mm256_add_pd(v0, v1);
                 __m256d diff = _mm256_sub_pd(v0, v1);
 
-                _mm256_storeu_pd((double*)&state[i], _mm256_mul_pd(sum, vec_s));
-                _mm256_storeu_pd((double*)&state[j], _mm256_mul_pd(diff, vec_s));
+                _mm256_storeu_pd((double*)&states[i], _mm256_mul_pd(sum, vec_s));
+                _mm256_storeu_pd((double*)&states[j], _mm256_mul_pd(diff, vec_s));
             }
         }
     }
     else {
-#pragma omp parallel for schedule(static)
+        #pragma omp parallel for schedule(static)
         for (std::ptrdiff_t i = 0; i < size; i += 2) {
-            __m256d v = _mm256_loadu_pd((double*)&state[i]);
+            __m256d v = _mm256_loadu_pd((double*)&states[i]);
 
             // v_low  = [R0, I0, R0, I0]
             // v_high = [R1, I1, R1, I1]
@@ -51,7 +51,7 @@ void CircuitUnitaryOperationAVX::applyHadamard(StateVector& sv, size_t targetQub
 
             // Combine them: [ (R0+R1)s, (I0+I1)s, (R0-R1)s, (I0-I1)s ]
             __m256d result = _mm256_blend_pd(res_sum, res_diff, 0x0C); // 0x0C binary: 1100
-            _mm256_storeu_pd((double*)&state[i], _mm256_mul_pd(result, vec_s));
+            _mm256_storeu_pd((double*)&states[i], _mm256_mul_pd(result, vec_s));
         }
     }
 
@@ -60,23 +60,23 @@ void CircuitUnitaryOperationAVX::applyHadamard(StateVector& sv, size_t targetQub
     std::cout << "Hadamard applied in: " << ms.count() << " ms\n";
 }
 
-void CircuitUnitaryOperationAVX::applyPauliY(StateVector& sv, size_t q) {
+void CircuitUnitaryOperationAVX::applyPauliY(StateVector& sv, size_t target) {
     std::vector<std::complex<double>>& states = sv.data();
-    size_t size = states.size();
+    size_t size = sv.size();
 
     auto start = std::chrono::high_resolution_clock::now();
 
     // Reinterpret as flat double array: [R0, I0, R1, I1, ...]
     double* data_ptr = reinterpret_cast<double*>(states.data());
 
-    if (q == 0) {
+    if (target == 0) {
         // q == 0: Pairs are in the same AVX register [R0, I0, R1, I1]
         // We want to transform this to: [I1, -R1, -I0, R0]
 
         // Sign mask: [1.0, -1.0, -1.0, 1.0]
         __m256d sign_mask = _mm256_setr_pd(1.0, -1.0, -1.0, 1.0);
 
-#pragma omp parallel for
+        #pragma omp parallel for
         for (std::ptrdiff_t i = 0; i < size; i += 2) {
             __m256d v = _mm256_loadu_pd(&data_ptr[i * 2]);
 
@@ -94,7 +94,7 @@ void CircuitUnitaryOperationAVX::applyPauliY(StateVector& sv, size_t q) {
     }
     else {
         // q >= 1: Pairs are separated in memory
-        size_t half_step = 1ULL << q;
+        size_t half_step = 1ULL << target;
         size_t mask_low = half_step - 1;
 
         // Sign masks for separated registers
@@ -104,10 +104,10 @@ void CircuitUnitaryOperationAVX::applyPauliY(StateVector& sv, size_t q) {
         // For psi1_new (comes from v0): [-1.0, 1.0, -1.0, 1.0]
         __m256d sign_p1 = _mm256_setr_pd(-1.0, 1.0, -1.0, 1.0);
 
-#pragma omp parallel for
+        #pragma omp parallel for
         for (std::ptrdiff_t k = 0; k < size / 2; k += 2) {
             // Flattened bitwise indexing to avoid branching and cache misses
-            size_t idx0 = ((k >> q) << (q + 1)) | (k & mask_low);
+            size_t idx0 = ((k >> target) << (target + 1)) | (k & mask_low);
             size_t idx1 = idx0 | half_step;
 
             double* p0 = &data_ptr[idx0 * 2];
@@ -142,7 +142,7 @@ void CircuitUnitaryOperationAVX::applyPauliZ(StateVector& sv, size_t q) {
 
     auto start = std::chrono::high_resolution_clock::now();
 
-#pragma omp parallel for
+    #pragma omp parallel for
     for (std::ptrdiff_t i = 0; i < size; i += 2) {
         if (i & mask) {
             __m256d data = _mm256_loadu_pd((double*)&states[i]);
@@ -160,15 +160,13 @@ void CircuitUnitaryOperationAVX::applyPauliZ(StateVector& sv, size_t q) {
 
 void CircuitUnitaryOperationAVX::applyRotateX(StateVector& sv, size_t target, double theta) {
     std::vector<Complex>& states = sv.data();
+    double* data = reinterpret_cast<double*>(states.data());
     size_t size = states.size();
 
     double c = std::cos(theta / 2.0);
     double s = std::sin(theta / 2.0);
 
     auto start = std::chrono::high_resolution_clock::now();
-
-    // Reinterpret as a flat array of doubles: [Re0, Im0, Re1, Im1, ...]
-    double* data_ptr = reinterpret_cast<double*>(states.data());
 
     // Pre-load constants into AVX registers
     __m256d vec_c = _mm256_set1_pd(c);
@@ -182,7 +180,7 @@ void CircuitUnitaryOperationAVX::applyRotateX(StateVector& sv, size_t target, do
         #pragma omp parallel for
         for (std::ptrdiff_t i = 0; i < size; i += 2) {
             // Load 2 complex numbers [R0, I0, R1, I1]
-            __m256d v = _mm256_loadu_pd(&data_ptr[i * 2]);
+            __m256d v = _mm256_loadu_pd(&data[i * 2]);
 
             // Multiply by cosine
             __m256d v_c = _mm256_mul_pd(v, vec_c);
@@ -200,7 +198,7 @@ void CircuitUnitaryOperationAVX::applyRotateX(StateVector& sv, size_t target, do
             __m256d v_out = _mm256_add_pd(v_c, v_s);
 
             // Store back to memory
-            _mm256_storeu_pd(&data_ptr[i * 2], v_out);
+            _mm256_storeu_pd(&data[i * 2], v_out);
         }
     }
     else {
@@ -217,8 +215,8 @@ void CircuitUnitaryOperationAVX::applyRotateX(StateVector& sv, size_t target, do
             size_t idx0 = ((k >> target) << (target + 1)) | (k & mask_low);
             size_t idx1 = idx0 | half_step;
 
-            double* p0 = &data_ptr[idx0 * 2];
-            double* p1 = &data_ptr[idx1 * 2];
+            double* p0 = &data[idx0 * 2];
+            double* p1 = &data[idx1 * 2];
 
             __m256d v0 = _mm256_loadu_pd(p0);
             __m256d v1 = _mm256_loadu_pd(p1);
@@ -277,8 +275,8 @@ void CircuitUnitaryOperationAVX::applyRotateY(StateVector& sv, size_t target, do
 }
 
 void CircuitUnitaryOperationAVX::applyPhase(StateVector& sv, size_t q, double theta) {
-    std::vector<Complex>& states_vec = sv.data();
-    double* data = reinterpret_cast<double*>(states_vec.data());
+    std::vector<Complex>& states = sv.data();
+    double* data = reinterpret_cast<double*>(states.data());
 	size_t size = sv.size();
 
     double c = std::cos(theta);
@@ -292,7 +290,7 @@ void CircuitUnitaryOperationAVX::applyPhase(StateVector& sv, size_t q, double th
 
 
     if (q == 0) {
-#pragma omp parallel for
+        #pragma omp parallel for
         for (long long i = 0; i < (long long)size; i += 2) {
             __m256d v = _mm256_loadu_pd(&data[i * 2]);
             __m256d v_swp = _mm256_permute_pd(v, 0x05);
@@ -304,7 +302,7 @@ void CircuitUnitaryOperationAVX::applyPhase(StateVector& sv, size_t q, double th
     else {
         size_t half_step = 1ULL << q;
         size_t mask_low = half_step - 1;
-#pragma omp parallel for
+        #pragma omp parallel for
         for (long long k = 0; k < (long long)size / 2; k += 2) {
             size_t idx1 = (((k >> q) << (q + 1)) | (k & mask_low)) | half_step;
             __m256d v1 = _mm256_loadu_pd(&data[idx1 * 2]);
@@ -320,8 +318,8 @@ void CircuitUnitaryOperationAVX::applyPhase(StateVector& sv, size_t q, double th
 }
 
 void CircuitUnitaryOperationAVX::applyRotateZ(StateVector& sv, size_t target, double theta) {
-    std::vector<Complex>& states_vec = sv.data();
-    double* data = reinterpret_cast<double*>(states_vec.data());
+    std::vector<Complex>& states = sv.data();
+    double* data = reinterpret_cast<double*>(states.data());
     size_t size = sv.size();
 
     double c = std::cos(theta / 2.0);
@@ -334,7 +332,7 @@ void CircuitUnitaryOperationAVX::applyRotateZ(StateVector& sv, size_t target, do
 
     if (target == 0) {
         __m256d vec_s_mixed = _mm256_setr_pd(s, -s, -s, s);
-#pragma omp parallel for
+        #pragma omp parallel for
         for (long long i = 0; i < (long long)size; i += 2) {
             __m256d v = _mm256_loadu_pd(&data[i * 2]);
             __m256d v_swp = _mm256_permute_pd(v, 0x05);
@@ -345,7 +343,7 @@ void CircuitUnitaryOperationAVX::applyRotateZ(StateVector& sv, size_t target, do
     else {
         size_t half_step = 1ULL << target;
         size_t mask_low = half_step - 1;
-#pragma omp parallel for
+        #pragma omp parallel for
         for (long long k = 0; k < (long long)size / 2; k += 2) {
             size_t idx0 = ((k >> target) << (target + 1)) | (k & mask_low);
             size_t idx1 = idx0 | half_step;
@@ -400,7 +398,7 @@ void CircuitUnitaryOperationAVX::applyCNOT(StateVector& sv, size_t control, size
     std::cout << "CNOT applied in: " << ms.count() << " ms \n"; //Debug timing
 }
 
-void CircuitUnitaryOperationAVX::applyPauliX(StateVector& sv, size_t q) {
+void CircuitUnitaryOperationAVX::applyPauliX(StateVector& sv, size_t target) {
     std::vector<Complex>& states_vec = sv.data();
     double* data = reinterpret_cast<double*>(states_vec.data());
     size_t size = states_vec.size();
@@ -408,8 +406,8 @@ void CircuitUnitaryOperationAVX::applyPauliX(StateVector& sv, size_t q) {
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    if (q == 0) {
-#pragma omp parallel for
+    if (target == 0) {
+        #pragma omp parallel for
         for (long long i = 0; i < (long long)size; i += 2) {
             __m256d v = _mm256_loadu_pd(&data[i * 2]);
             // Swaps the two complex numbers: [C0, C1] -> [C1, C0]
@@ -418,11 +416,11 @@ void CircuitUnitaryOperationAVX::applyPauliX(StateVector& sv, size_t q) {
         }
     }
     else {
-        size_t half_step = 1ULL << q;
+        size_t half_step = 1ULL << target;
         size_t mask_low = half_step - 1;
 #pragma omp parallel for
         for (long long k = 0; k < (long long)size / 2; k += 2) {
-            size_t idx0 = ((k >> q) << (q + 1)) | (k & mask_low);
+            size_t idx0 = ((k >> target) << (target + 1)) | (k & mask_low);
             size_t idx1 = idx0 | half_step;
 
             __m256d v0 = _mm256_loadu_pd(&data[idx0 * 2]);
@@ -439,7 +437,7 @@ void CircuitUnitaryOperationAVX::applyPauliX(StateVector& sv, size_t q) {
 //methods bellow shold be changed
 
 void CircuitUnitaryOperationAVX::applyGate(StateVector& sv, const Gate2x2& gate, size_t q) {
-    std::vector<std::complex<double>>& amplitudes = sv.data();
+    std::vector<std::complex<double>>& states = sv.data();
     size_t N = sv.qubits();
     size_t size = sv.size();
 
@@ -454,11 +452,11 @@ void CircuitUnitaryOperationAVX::applyGate(StateVector& sv, const Gate2x2& gate,
         size_t i0 = ((i >> q) << (q + 1)) | (i & (sectionSize - 1));
         size_t i1 = i0 | sectionSize;
 
-        std::complex<double> low = amplitudes[i0];
-        std::complex<double> high = amplitudes[i1];
+        std::complex<double> low = states[i0];
+        std::complex<double> high = states[i1];
 
-        amplitudes[i0] = gate.data[0][0] * low + gate.data[0][1] * high;
-        amplitudes[i1] = gate.data[1][0] * low + gate.data[1][1] * high;
+        states[i0] = gate.data[0][0] * low + gate.data[0][1] * high;
+        states[i1] = gate.data[1][0] * low + gate.data[1][1] * high;
     }
 
     auto end = std::chrono::high_resolution_clock::now();

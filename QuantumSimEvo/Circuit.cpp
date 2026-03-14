@@ -60,7 +60,10 @@ void Circuit::execute(bool print_steps) {
                 CircuitUnitaryOperation::applyPauliX(stateVector, cmd.target);
                 break;
             case GateType::RX:
-				CircuitUnitaryOperation::applyRotateX(stateVector, cmd.target, cmd.theta);
+                if(useAVX)
+					CircuitUnitaryOperation::applyRotateXAVX(stateVector, cmd.target, cmd.theta);
+                else
+				    CircuitUnitaryOperation::applyRotateX(stateVector, cmd.target, cmd.theta);
                 break;
             case GateType::RY:
                 if (useAVX)
@@ -75,7 +78,10 @@ void Circuit::execute(bool print_steps) {
                 CircuitUnitaryOperation::applyCNOT(stateVector, cmd.control, cmd.target);
 				break;
 			case GateType::Y:
-                CircuitUnitaryOperation::applyPauliY(stateVector, cmd.target);
+                if (useAVX)
+                    CircuitUnitaryOperation::applyPauliYAVX(stateVector, cmd.target);
+				else
+                    CircuitUnitaryOperation::applyPauliY(stateVector, cmd.target);
                 break;
             case GateType::PHASE:
                 CircuitUnitaryOperation::applyPhase(stateVector, cmd.target, cmd.theta);

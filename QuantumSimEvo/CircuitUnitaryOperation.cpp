@@ -211,6 +211,81 @@ void CircuitUnitaryOperation::applyPauliY(StateVector& sv, size_t q) {
     std::cout << "PauliY applied in: " << ms.count() << " ms \n"; //Debug timing
 }
 
+void CircuitUnitaryOperation::applyPauliYAVX(StateVector& sv, size_t q) {
+    // Assuming StateVector::data() returns std::vector<std::complex<double>>&
+    std::vector<std::complex<double>>& states = sv.data();
+    size_t size = states.size();
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    // Reinterpret as flat double array: [R0, I0, R1, I1, ...]
+    double* data_ptr = reinterpret_cast<double*>(states.data());
+
+    if (q == 0) {
+        // q == 0: Pairs are in the same AVX register [R0, I0, R1, I1]
+        // We want to transform this to: [I1, -R1, -I0, R0]
+
+        // Sign mask: [1.0, -1.0, -1.0, 1.0]
+        __m256d sign_mask = _mm256_setr_pd(1.0, -1.0, -1.0, 1.0);
+
+        #pragma omp parallel for
+        for (std::ptrdiff_t i = 0; i < size; i += 2) {
+            __m256d v = _mm256_loadu_pd(&data_ptr[i * 2]);
+
+            // 1. Swap the two complex numbers: [R1, I1, R0, I0]
+            __m256d v_swap_128 = _mm256_permute2f128_pd(v, v, 0x01);
+
+            // 2. Swap Real and Imaginary parts: [I1, R1, I0, R0]
+            __m256d v_swap_64 = _mm256_permute_pd(v_swap_128, 0x05);
+
+            // 3. Apply signs: [I1, -R1, -I0, R0]
+            __m256d v_out = _mm256_mul_pd(v_swap_64, sign_mask);
+
+            _mm256_storeu_pd(&data_ptr[i * 2], v_out);
+        }
+    }
+    else {
+        // q >= 1: Pairs are separated in memory
+        size_t half_step = 1ULL << q;
+        size_t mask_low = half_step - 1;
+
+        // Sign masks for separated registers
+        // For psi0_new (comes from v1): [1.0, -1.0, 1.0, -1.0]
+        __m256d sign_p0 = _mm256_setr_pd(1.0, -1.0, 1.0, -1.0);
+
+        // For psi1_new (comes from v0): [-1.0, 1.0, -1.0, 1.0]
+        __m256d sign_p1 = _mm256_setr_pd(-1.0, 1.0, -1.0, 1.0);
+
+        #pragma omp parallel for
+        for (std::ptrdiff_t k = 0; k < size / 2; k += 2) {
+            // Flattened bitwise indexing to avoid branching and cache misses
+            size_t idx0 = ((k >> q) << (q + 1)) | (k & mask_low);
+            size_t idx1 = idx0 | half_step;
+
+            double* p0 = &data_ptr[idx0 * 2];
+            double* p1 = &data_ptr[idx1 * 2];
+
+            __m256d v0 = _mm256_loadu_pd(p0);
+            __m256d v1 = _mm256_loadu_pd(p1);
+
+            // Process new p0 (which takes the values of v1, swapped and signed)
+            __m256d v1_swapped = _mm256_permute_pd(v1, 0x05); // [I1_a, R1_a, I1_b, R1_b]
+            __m256d p0_new = _mm256_mul_pd(v1_swapped, sign_p0); // [I1_a, -R1_a, I1_b, -R1_b]
+
+            // Process new p1 (which takes the values of v0, swapped and signed)
+            __m256d v0_swapped = _mm256_permute_pd(v0, 0x05); // [I0_a, R0_a, I0_b, R0_b]
+            __m256d p1_new = _mm256_mul_pd(v0_swapped, sign_p1); // [-I0_a, R0_a, -I0_b, R0_b]
+
+            _mm256_storeu_pd(p0, p0_new);
+            _mm256_storeu_pd(p1, p1_new);
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> ms = end - start;
+    std::cout << "PauliY applied in: " << ms.count() << " ms \n";
+}
+
 void CircuitUnitaryOperation::applyPauliZ(StateVector& sv, size_t q) {
 	std::vector<std::complex<double>>& states = sv.data();
 	size_t size = sv.size();
@@ -250,6 +325,93 @@ void CircuitUnitaryOperation::applyPauliZAVX(StateVector& sv, size_t q) {
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> ms = end - start;
     std::cout << "PauliZAVX applied in: " << ms.count() << " ms \n"; //Debug timing
+}
+
+void CircuitUnitaryOperation::applyRotateXAVX(StateVector& sv, size_t target, double theta) {
+    std::vector<Complex>& states = sv.data();
+    size_t size = states.size();
+
+    double c = std::cos(theta / 2.0);
+    double s = std::sin(theta / 2.0);
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    // Reinterpret as a flat array of doubles: [Re0, Im0, Re1, Im1, ...]
+    double* data_ptr = reinterpret_cast<double*>(states.data());
+
+    // Pre-load constants into AVX registers
+    __m256d vec_c = _mm256_set1_pd(c);
+
+    // This exact sequence [s, -s, s, -s] cleverly handles the multiplication by -i 
+    // when combined with a Real/Imag swap, skipping actual complex multiplication.
+    __m256d vec_s_pos_neg = _mm256_setr_pd(s, -s, s, -s);
+
+    if (target == 0) {
+        // Special case: target == 0. Paired amplitudes are adjacent in memory.
+        #pragma omp parallel for
+        for (std::ptrdiff_t i = 0; i < size; i += 2) {
+            // Load 2 complex numbers [R0, I0, R1, I1]
+            __m256d v = _mm256_loadu_pd(&data_ptr[i * 2]);
+
+            // Multiply by cosine
+            __m256d v_c = _mm256_mul_pd(v, vec_c);
+
+            // Cross the complex numbers: [R1, I1, R0, I0]
+            __m256d v_swap_pairs = _mm256_permute2f128_pd(v, v, 0x01);
+
+            // Swap Real/Imag parts: [I1, R1, I0, R0]
+            __m256d v_swap_re_im = _mm256_permute_pd(v_swap_pairs, 0x05);
+
+            // Multiply by [s, -s, s, -s] to get [s I1, -s R1, s I0, -s R0]
+            __m256d v_s = _mm256_mul_pd(v_swap_re_im, vec_s_pos_neg);
+
+            // Add back together
+            __m256d v_out = _mm256_add_pd(v_c, v_s);
+
+            // Store back to memory
+            _mm256_storeu_pd(&data_ptr[i * 2], v_out);
+        }
+    }
+    else {
+        // target >= 1. Paired amplitudes are at least 1 AVX register apart.
+        size_t half_step = 1ULL << target;
+        size_t mask_low = half_step - 1;
+
+        // Flattened loop avoids skipping iterations and perfectly distributes over OpenMP threads
+        #pragma omp parallel for
+        for (std::ptrdiff_t k = 0; k < size / 2; k += 2) {
+
+            // Bitwise math correctly maps the sequential loop index `k` to the jumping 
+            // memory layout, avoiding expensive modulus/division operations.
+            size_t idx0 = ((k >> target) << (target + 1)) | (k & mask_low);
+            size_t idx1 = idx0 | half_step;
+
+            double* p0 = &data_ptr[idx0 * 2];
+            double* p1 = &data_ptr[idx1 * 2];
+
+            __m256d v0 = _mm256_loadu_pd(p0);
+            __m256d v1 = _mm256_loadu_pd(p1);
+
+            // Calculate psi0_new = c * v0 - i * s * v1
+            __m256d v0_c = _mm256_mul_pd(v0, vec_c);
+            __m256d v1_swap = _mm256_permute_pd(v1, 0x05);         // Swap Real/Imag
+            __m256d v1_s = _mm256_mul_pd(v1_swap, vec_s_pos_neg);  // Apply sine and -i signs
+            __m256d psi0_new = _mm256_add_pd(v0_c, v1_s);
+
+            // Calculate psi1_new = -i * s * v0 + c * v1
+            __m256d v1_c = _mm256_mul_pd(v1, vec_c);
+            __m256d v0_swap = _mm256_permute_pd(v0, 0x05);
+            __m256d v0_s = _mm256_mul_pd(v0_swap, vec_s_pos_neg);
+            __m256d psi1_new = _mm256_add_pd(v1_c, v0_s);
+
+            _mm256_storeu_pd(p0, psi0_new);
+            _mm256_storeu_pd(p1, psi1_new);
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> ms = end - start;
+    std::cout << "RotateX applied in: " << ms.count() << " ms \n";
 }
 
 void CircuitUnitaryOperation::applyRotateX(StateVector& sv, size_t target, double theta) {

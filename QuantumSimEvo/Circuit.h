@@ -14,6 +14,7 @@
 #include "Structurs.h"
 #include "QubitUnitaryOperation.h"
 #include "CircuitUnitaryOperation.h"
+#include "Noise.h"
 
 class QUANTUM_API Circuit {
 private:
@@ -22,9 +23,11 @@ private:
     std::vector<GateCommand> commands;
     std::unique_ptr<ICircuitUnitaryOperation> circuitOp;
 
+    bool simulateNoise;
+    Noise pauliNoise;
 public:
     // Constructor
-    Circuit(size_t N);
+    Circuit(size_t N, bool simulatePauliNoise = false);
 
     // Gate methods
     void hadamard(size_t q);

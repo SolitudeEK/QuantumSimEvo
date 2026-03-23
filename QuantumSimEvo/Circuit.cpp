@@ -2,7 +2,7 @@
 #include "Structurs.h"
 #include "CircuitUnitaryOperationFactory.h"
 
-Circuit::Circuit(size_t N) : numQubits(N), stateVector(N) {
+Circuit::Circuit(size_t N, bool simulatePauliNoise) : numQubits(N), stateVector(N), pauliNoise(N, 42, 1), simulateNoise(simulatePauliNoise) {
     circuitOp = CircuitUnitaryOperationFactory::create();
 }
 
@@ -49,40 +49,48 @@ void Circuit::execute(bool print_steps) {
     for (const auto& cmd : commands) {
         if (print_steps) std::cout << "Executing: " << cmd.description << std::endl;
 
-        // Route the command to the optimized Executor backend
+        if (simulateNoise)
+            pauliNoise.accumulateError(cmd.type, cmd.target);
+
         switch (cmd.type) {
-            case GateType::H:
-				circuitOp->applyHadamard(stateVector, cmd.target);
-                break;
-            case GateType::X:
-                circuitOp->applyPauliX(stateVector, cmd.target);
-                break;
-            case GateType::RX:
-                    circuitOp->applyRotateX(stateVector, cmd.target, cmd.theta);
-                break;
-            case GateType::RY:
-                    circuitOp->applyRotateY(stateVector, cmd.target, cmd.theta);
-                break;
-            case GateType::RZ:
-                circuitOp->applyRotateZ(stateVector, cmd.target, cmd.theta);
-                break;
-            case GateType::CNOT:
-                circuitOp->applyCNOT(stateVector, cmd.control, cmd.target);
-				break;
-			case GateType::Y:
-                circuitOp->applyPauliY(stateVector, cmd.target);
-                break;
-            case GateType::PHASE:
-                circuitOp->applyPhase(stateVector, cmd.target, cmd.theta);
-				break;
-			case GateType::Z:
-                circuitOp->applyPauliZ(stateVector, cmd.target);
-                break;
-            default:
-				std::cerr << "Unsupported gate type: " << static_cast<int>(cmd.type) << std::endl;
-            }
+        case GateType::H:
+            circuitOp->applyHadamard(stateVector, cmd.target);
+            break;
+        case GateType::X:
+            circuitOp->applyPauliX(stateVector, cmd.target);
+            break;
+        case GateType::RX:
+            circuitOp->applyRotateX(stateVector, cmd.target, cmd.theta);
+            break;
+        case GateType::RY:
+            circuitOp->applyRotateY(stateVector, cmd.target, cmd.theta);
+            break;
+        case GateType::RZ:
+            circuitOp->applyRotateZ(stateVector, cmd.target, cmd.theta);
+            break;
+        case GateType::CNOT:
+            circuitOp->applyCNOT(stateVector, cmd.control, cmd.target);
+            break;
+        case GateType::Y:
+            circuitOp->applyPauliY(stateVector, cmd.target);
+            break;
+        case GateType::PHASE:
+            circuitOp->applyPhase(stateVector, cmd.target, cmd.theta);
+            break;
+        case GateType::Z:
+            circuitOp->applyPauliZ(stateVector, cmd.target);
+            break;
+        default:
+            std::cerr << "Unsupported gate type: " << static_cast<int>(cmd.type) << std::endl;
         }
     }
+
+    if (simulateNoise)
+        pauliNoise.applyPauliNoise(stateVector);
+    if (print_steps)
+        std::cout << "Total of occured errors: \n BitFlips:" << pauliNoise.getTotalBitFlips()
+	<< " times\n PhaseFlips:" << pauliNoise.getTotalPhaseFlips() << " times.\n";
+}
 
 size_t Circuit::measure() {
     return stateVector.measure();
@@ -90,6 +98,8 @@ size_t Circuit::measure() {
 
 void Circuit::reset() {
     stateVector.reset();
+    if (simulateNoise)
+        pauliNoise.resetStats();
     commands.clear();
 }
 

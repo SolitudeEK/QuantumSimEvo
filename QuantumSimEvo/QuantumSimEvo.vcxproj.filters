@@ -50,6 +50,9 @@
     <ClCompile Include="CircuitUnitaryOperationFactory.cpp">
       <Filter>Sim</Filter>
     </ClCompile>
+    <ClCompile Include="Noise.cpp">
+      <Filter>Sim</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="HardwareCheck.h">
@@ -78,6 +81,9 @@
       <Filter>Sim\Header</Filter>
     </ClInclude>
     <ClInclude Include="CircuitUnitaryOperationFactory.h">
+      <Filter>Sim\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="Noise.h">
       <Filter>Sim\Header</Filter>
     </ClInclude>
   </ItemGroup>

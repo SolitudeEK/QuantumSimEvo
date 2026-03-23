@@ -6,35 +6,30 @@ int main()
 {
     HardwareCheck::printReport();
     int arr[4] = { 0,0,0,0 };
-    int n = 10;
-    int qubits = 10;
+    int n = 1000;
+    int qubits = 2;
     cout << "-----------------------------\n";
     cout << "Running " << n << " test circuits to verify the distribution of measurement outcomes...\n";
 
-    Circuit qc(qubits);
+    Circuit qc(qubits, true);
 
     for (int i = 0; i < n; ++i) {
 
         cout << "Running test circuit " << (i + 1) << endl;
 
-        //qc.pauliX(0);
+        qc.pauliX(0);
 
-        //qc.hadamard(0);
-
-        //qc.cnot(0, 1);
-		qc.hadamard(5);
-
-        qc.pauliX(5);
-
-        qc.cnot(5, 9);
-
+        qc.hadamard(0);
+        qc.cnot(0, 1);
         qc.execute(false);
 
-        //qc.printState();
+        qc.printState();
         
         qc.printState();
+
         size_t result = qc.measure();
-        //arr[result]++;
+
+        arr[result]++;
 		
         cout << "Measured State Index: " << result << endl;
 

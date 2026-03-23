@@ -141,6 +141,7 @@
     <ClCompile Include="CircuitUnitaryOperationFactory.cpp" />
     <ClCompile Include="Dirac.cpp" />
     <ClCompile Include="HardwareCheck.cpp" />
+    <ClCompile Include="Noise.cpp" />
     <ClCompile Include="QubitUnitaryOperation.cpp" />
     <ClCompile Include="StateVector.cpp" />
     <ClCompile Include="Structurs.h" />
@@ -155,6 +156,7 @@
       <DeploymentContent>false</DeploymentContent>
     </ClInclude>
     <ClInclude Include="ICircuitUnitaryOperation.h" />
+    <ClInclude Include="Noise.h" />
     <ClInclude Include="QubitUnitaryOperation.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="StateVector.h" />

@@ -79,36 +79,41 @@ std::vector<size_t> StateVector::sample(int numShots) {
 
 	auto start = std::chrono::high_resolution_clock::now();
 
-	// Requires OpenMP 5.0+ support (GCC 9+, Clang 10+).
-	double totalProb = 0.0;
 
-	#pragma omp parallel for simd reduction(inscan, +:totalProb)
-	for (std::ptrdiff_t i = 0; i < (std::ptrdiff_t)size; ++i) {
-		double p = std::norm(stateVector[i]); // |amplitude|^2
-		totalProb += p;
-	#pragma omp scan inclusive(totalProb)
-		cumulative[i] = totalProb;
+#pragma omp parallel for
+	for (std::ptrdiff_t i = 0; i < size; ++i) {
+		cumulative[i] = std::norm(stateVector[i]);
 	}
 
+	// 2. Compute Cumulative Distribution (Scanning)
+	// This part is inherently serial, but for 65k elements it is very fast
+	for (size_t i = 1; i < size; ++i) {
+		cumulative[i] += cumulative[i - 1];
+	}
+
+	// Normalizing the last element to handle floating point precision
+	double totalProb = cumulative[size - 1];
+
+	// 3. Parallel Sampling (The "Many Shots" part)
 #pragma omp parallel
 	{
-		unsigned int seed = static_cast<unsigned int>(
-			std::chrono::system_clock::now().time_since_epoch().count()
-			) ^ omp_get_thread_num();
-
-		std::mt19937 gen(seed);
-		std::uniform_real_distribution<double> dist(0.0, cumulative.back());
+		// Give each thread its own random engine to avoid race conditions
+		std::random_device rd;
+		std::mt19937 gen(rd() ^ omp_get_thread_num());
+		std::uniform_real_distribution<double> dist(0.0, totalProb);
 
 #pragma omp for
 		for (int s = 0; s < numShots; ++s) {
 			double target = dist(gen);
 
-			// Binary Search: O(log N)
-			// For 30 qubits (N=10^9), this takes only ~30 comparisons.
+			// Binary search to find the index (O(log N))
+			// This is much faster than a linear loop for large state vectors
 			auto it = std::lower_bound(cumulative.begin(), cumulative.end(), target);
 			results[s] = std::distance(cumulative.begin(), it);
 		}
 	}
+
+	return results;
 
 	auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> ms = end - start;

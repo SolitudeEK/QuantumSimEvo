@@ -9,18 +9,34 @@
 
 void QAOA::bruteForceMaxCut(int n, const std::vector<std::pair<int, int>>& edges)
 {
-    int maxCutSize = 0;
-    int bestMask = 0;
+    size_t maxCutSize = 0;
+    size_t bestMask = 0;
 
-    long long totalCombinations = 1LL << (n - 1);
+    size_t totalCombinations = 1LL << (n - 1);
 
-    std::cout << "Checking " << (1LL << n) << " combinations..." << '\n';
+    std::cout << "Checking " << totalCombinations << " combinations with OpenMP..." << '\n';
 
-    for (int i = 0; i < totalCombinations; ++i) {
-        int currentCut = calculateCutForMask(i, edges);
-        if (currentCut > maxCutSize) {
-            maxCutSize = currentCut;
-            bestMask = i;
+	#pragma omp parallel
+    {
+        size_t localMaxCut = 0;
+        size_t localBestMask = 0;
+
+		#pragma omp for
+        for (std::ptrdiff_t i = 0; i < totalCombinations; ++i) {
+            int currentCut = calculateCutForMask(i, edges);
+
+            if (currentCut > localMaxCut) {
+                localMaxCut = currentCut;
+                localBestMask = i;
+            }
+        }
+
+		#pragma omp critical
+        {
+            if (localMaxCut > maxCutSize) {
+                maxCutSize = localMaxCut;
+                bestMask = localBestMask;
+            }
         }
     }
 

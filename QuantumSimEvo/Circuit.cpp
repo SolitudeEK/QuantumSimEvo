@@ -106,3 +106,7 @@ void Circuit::reset() {
 void Circuit::printState() {
     stateVector.printState();
 }
+
+std::vector<size_t> Circuit::sample(int numShots){
+	return stateVector.sample(numShots);
+}

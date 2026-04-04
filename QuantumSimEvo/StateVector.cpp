@@ -28,7 +28,7 @@ StateVector::StateVector(size_t num) : numQubits(num) {
 
 	auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> ms = end - start;
-	std::cout << "Memmory allocation done in: " << ms.count() << " ms \n"; //Debug timing
+	std::cout << "Memory allocation done in: " << ms.count() << " ms \n"; //Debug timing
 }
 
 void StateVector::reset() {
@@ -41,7 +41,7 @@ void StateVector::reset() {
 
 	auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> ms = end - start;
-	std::cout << "Memmory cleaning done in: " << ms.count() << " ms \n";
+	std::cout << "Memory cleaning done in: " << ms.count() << " ms \n";
 }
 /*size_t StateVector::measure() { v1
 	std::vector<double> probs(stateSize);
@@ -71,6 +71,51 @@ void StateVector::reset() {
 
 	return collapsedState;
 }*/
+
+std::vector<size_t> StateVector::sample(int numShots) {
+	size_t size = this->stateSize;
+	std::vector<double> cumulative(size);
+	std::vector<size_t> results(numShots);
+
+	auto start = std::chrono::high_resolution_clock::now();
+
+	// Requires OpenMP 5.0+ support (GCC 9+, Clang 10+).
+	double totalProb = 0.0;
+
+	#pragma omp parallel for simd reduction(inscan, +:totalProb)
+	for (std::ptrdiff_t i = 0; i < (std::ptrdiff_t)size; ++i) {
+		double p = std::norm(stateVector[i]); // |amplitude|^2
+		totalProb += p;
+	#pragma omp scan inclusive(totalProb)
+		cumulative[i] = totalProb;
+	}
+
+#pragma omp parallel
+	{
+		unsigned int seed = static_cast<unsigned int>(
+			std::chrono::system_clock::now().time_since_epoch().count()
+			) ^ omp_get_thread_num();
+
+		std::mt19937 gen(seed);
+		std::uniform_real_distribution<double> dist(0.0, cumulative.back());
+
+#pragma omp for
+		for (int s = 0; s < numShots; ++s) {
+			double target = dist(gen);
+
+			// Binary Search: O(log N)
+			// For 30 qubits (N=10^9), this takes only ~30 comparisons.
+			auto it = std::lower_bound(cumulative.begin(), cumulative.end(), target);
+			results[s] = std::distance(cumulative.begin(), it);
+		}
+	}
+
+	auto end = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double, std::milli> ms = end - start;
+	std::cout << "Generated " << numShots << " samples in: " << ms.count() << " ms\n";
+
+	return results;
+}
 
 size_t StateVector::measure() {
 	auto start = std::chrono::high_resolution_clock::now();

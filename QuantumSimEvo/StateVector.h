@@ -38,6 +38,7 @@ public:
 
 	void reset();
     size_t measure();
+    std::vector<size_t> sample(int numShots);
     void applyUnitaryOperation(const Gate2x2& gate, size_t targetQubit);
     void printState();
     std::string stateAsString(size_t index);

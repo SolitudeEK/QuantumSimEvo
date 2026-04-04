@@ -43,6 +43,7 @@ public:
     // Execution & Measurement
     void execute(bool print_steps = false);
     size_t measure();
+    std::vector<size_t> sample(int numShots);
 	void reset();
 
     // Utilities

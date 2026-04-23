@@ -2,18 +2,21 @@
 #define STRUCTURES_H
 #include <string>
 #include <complex>
+#include <vector>
 
 using Complex = std::complex<double>;
 
 // Define the types of supported gates
-enum class GateType { IDENTITY, X, Y, Z, H, PHASE, RX, RY, RZ, CNOT };
+enum class GateType { IDENTITY, X, Y, Z, H, PHASE, RX, RY, RZ, CNOT, CPHASE, MCPHASE, SWAP, MEASURE, RESET_QUBIT };
 
 struct GateCommand {
     GateType type;
     size_t target;
-    size_t control; // Only used for CNOT
-    double theta;   // Only used for rotation gates
+    size_t control;              // Used for CNOT, CPHASE, and SWAP
+    double theta;                // Only used for rotation gates
     std::string description;
+    size_t resultIdx;            // Used for MEASURE: index into Circuit::measurementResults
+    std::vector<size_t> controls_list;  // Used for MCPHASE
 };
 
 // A fixed-size 2x2 matrix structure with an explicit constructor

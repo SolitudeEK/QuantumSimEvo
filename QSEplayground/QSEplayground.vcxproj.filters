@@ -21,9 +21,27 @@
     <ClCompile Include="QAOA.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Shor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="QFT.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Grover.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="QAOA.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Shor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="QFT.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Grover.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

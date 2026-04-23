@@ -5,10 +5,10 @@
 #include <vector>
 #include <chrono>
 #include <iostream>
+#include <cmath>
 
 void CircuitUnitaryOperation::applyGate(StateVector& sv, const Gate2x2& gate, size_t q) {
     std::vector<std::complex<double>>& amplitudes = sv.data();
-    size_t N = sv.qubits();
     size_t size = sv.size();
 
     size_t sectionSize = 1ULL << q;
@@ -17,11 +17,11 @@ void CircuitUnitaryOperation::applyGate(StateVector& sv, const Gate2x2& gate, si
 
     #pragma omp parallel for
     for (std::ptrdiff_t i = 0; i < (size >> 1); ++i) {
-        // Bit manipulation to find the pair of indices (i0, i1) 
+        // Bit manipulation to find the pair of indices (i0, i1)
         // affected by the gate on qubit q
         size_t i0 = ((i >> q) << (q + 1)) | (i & (sectionSize - 1));
         size_t i1 = i0 | sectionSize;
- 
+
         std::complex<double> low = amplitudes[i0];
         std::complex<double> high = amplitudes[i1];
 
@@ -29,9 +29,10 @@ void CircuitUnitaryOperation::applyGate(StateVector& sv, const Gate2x2& gate, si
         amplitudes[i1] = gate.data[1][0] * low + gate.data[1][1] * high;
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "Gate applied in: " << ms.count() << " ms \n"; //Debug timing
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "Gate applied in: " << ms.count() << " ms \n";
+    }
 }
 
 void CircuitUnitaryOperation::applyCNOT(StateVector& sv, size_t control, size_t target) {
@@ -51,9 +52,10 @@ void CircuitUnitaryOperation::applyCNOT(StateVector& sv, size_t control, size_t 
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "CNOT applied in: " << ms.count() << " ms \n"; //Debug timing
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "CNOT applied in: " << ms.count() << " ms \n";
+    }
 }
 
 void CircuitUnitaryOperation::applyPauliX(StateVector& sv, size_t q) {
@@ -70,9 +72,10 @@ void CircuitUnitaryOperation::applyPauliX(StateVector& sv, size_t q) {
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "PauliX applied in: " << ms.count() << " ms \n"; //Debug timing
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "PauliX applied in: " << ms.count() << " ms \n";
+    }
 }
 
 void CircuitUnitaryOperation::applyHadamard(StateVector& sv, size_t targetQubit) {
@@ -100,9 +103,10 @@ void CircuitUnitaryOperation::applyHadamard(StateVector& sv, size_t targetQubit)
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "Hadamard applied in: " << ms.count() << " ms \n"; //Debug timing
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "Hadamard applied in: " << ms.count() << " ms \n";
+    }
 }
 
 void CircuitUnitaryOperation::applyPhase(StateVector& sv, size_t q, double theta) {
@@ -121,9 +125,10 @@ void CircuitUnitaryOperation::applyPhase(StateVector& sv, size_t q, double theta
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "Phase applied in: " << ms.count() << " ms \n"; //Debug timing
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "Phase applied in: " << ms.count() << " ms \n";
+    }
 }
 
 void CircuitUnitaryOperation::applyPauliY(StateVector& sv, size_t q) {
@@ -148,9 +153,10 @@ void CircuitUnitaryOperation::applyPauliY(StateVector& sv, size_t q) {
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "PauliY applied in: " << ms.count() << " ms \n"; //Debug timing
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "PauliY applied in: " << ms.count() << " ms \n";
+    }
 }
 
 void CircuitUnitaryOperation::applyPauliZ(StateVector& sv, size_t q) {
@@ -166,9 +172,10 @@ void CircuitUnitaryOperation::applyPauliZ(StateVector& sv, size_t q) {
 			states[i] = -states[i]; // negation faster than multiplication by -1.0
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-	std::cout << "PauliZ applied in: " << ms.count() << " ms \n"; //Debug timing
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "PauliZ applied in: " << ms.count() << " ms \n";
+    }
 }
 
 void CircuitUnitaryOperation::applyRotateX(StateVector& sv, size_t target, double theta) {
@@ -196,9 +203,10 @@ void CircuitUnitaryOperation::applyRotateX(StateVector& sv, size_t target, doubl
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "RotateX applied in: " << ms.count() << " ms \n"; //Debug timing
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "RotateX applied in: " << ms.count() << " ms \n";
+    }
 }
 
 void CircuitUnitaryOperation::applyRotateY(StateVector& sv, size_t target, double theta) {
@@ -225,9 +233,10 @@ void CircuitUnitaryOperation::applyRotateY(StateVector& sv, size_t target, doubl
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "RotateY applied in: " << ms.count() << " ms \n"; //Debug timing
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "RotateY applied in: " << ms.count() << " ms \n";
+    }
 }
 
 void CircuitUnitaryOperation::applyRotateZ(StateVector& sv, size_t target, double theta) {
@@ -249,7 +258,82 @@ void CircuitUnitaryOperation::applyRotateZ(StateVector& sv, size_t target, doubl
             states[i] *= phase0;
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "RotateZ applied in: " << ms.count() << " ms \n"; //Debug timing
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "RotateZ applied in: " << ms.count() << " ms \n";
+    }
 }
+
+void CircuitUnitaryOperation::applySwap(StateVector& sv, size_t q0, size_t q1) {
+    std::vector<Complex>& states = sv.data();
+    size_t size = sv.size();
+    size_t mask0 = 1ULL << q0;
+    size_t mask1 = 1ULL << q1;
+    size_t min_q = std::min(q0, q1);
+    size_t max_q = std::max(q0, q1);
+    size_t low_mask = (1ULL << min_q) - 1;
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    #pragma omp parallel for
+    for (std::ptrdiff_t k = 0; k < size / 4; ++k) {
+        size_t i = ((k >> min_q) << (min_q + 1)) | (k & low_mask);
+        size_t idx = ((i >> max_q) << (max_q + 1)) | (i & ((1ULL << max_q) - 1));
+        std::swap(states[idx | mask0], states[idx | mask1]);
+    }
+
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "Swap applied in: " << ms.count() << " ms \n";
+    }
+}
+
+void CircuitUnitaryOperation::applyMCPhase(StateVector& sv, const std::vector<size_t>& controls, size_t target, double theta) {
+    std::vector<Complex>& states = sv.data();
+    size_t size = sv.size();
+
+    size_t allMask = 1ULL << target;
+    for (size_t c : controls) allMask |= (1ULL << c);
+
+    Complex phase = std::exp(Complex(0, theta));
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    #pragma omp parallel for
+    for (std::ptrdiff_t i = 0; i < size; ++i) {
+        if ((static_cast<size_t>(i) & allMask) == allMask)
+            states[i] *= phase;
+    }
+
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "MCPhase applied in: " << ms.count() << " ms \n";
+    }
+}
+
+void CircuitUnitaryOperation::applyCPhase(StateVector& sv, size_t control, size_t target, double theta) {
+    std::vector<Complex>& states = sv.data();
+    size_t size = sv.size();
+    size_t ctrlMask = 1ULL << control;
+    size_t tgtMask  = 1ULL << target;
+    // e^{i*theta} = cos(theta) + i*sin(theta)
+    double c = std::cos(theta);
+    double s = std::sin(theta);
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    #pragma omp parallel for
+    for (std::ptrdiff_t i = 0; i < size; ++i) {
+        if ((i & ctrlMask) && (i & tgtMask)) {
+            double re = states[i].real();
+            double im = states[i].imag();
+            states[i] = Complex(re * c - im * s, re * s + im * c);
+        }
+    }
+
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "CPhase applied in: " << ms.count() << " ms \n";
+    }
+}
+

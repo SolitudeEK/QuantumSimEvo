@@ -1,7 +1,10 @@
-#include "CircuitUnitaryOperationAVX.h";
+#include "CircuitUnitaryOperationAVX.h"
 #include <chrono>
 #include <iostream>
 #include <immintrin.h>
+#include <vector>
+#include <algorithm>
+#include <cmath>
 
 void CircuitUnitaryOperationAVX::applyHadamard(StateVector& sv, size_t target)
 {
@@ -51,9 +54,10 @@ void CircuitUnitaryOperationAVX::applyHadamard(StateVector& sv, size_t target)
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "Hadamard applied in: " << ms.count() << " ms\n";
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "Hadamard applied in: " << ms.count() << " ms\n";
+    }
 }
 
 void CircuitUnitaryOperationAVX::applyPauliY(StateVector& sv, size_t target) {
@@ -110,9 +114,10 @@ void CircuitUnitaryOperationAVX::applyPauliY(StateVector& sv, size_t target) {
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "PauliY applied in: " << ms.count() << " ms \n";
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "PauliY applied in: " << ms.count() << " ms \n";
+    }
 }
 
 void CircuitUnitaryOperationAVX::applyPauliZ(StateVector& sv, size_t q) {
@@ -133,9 +138,10 @@ void CircuitUnitaryOperationAVX::applyPauliZ(StateVector& sv, size_t q) {
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "PauliZ applied in: " << ms.count() << " ms \n";
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "PauliZ applied in: " << ms.count() << " ms \n";
+    }
 }
 
 
@@ -198,9 +204,10 @@ void CircuitUnitaryOperationAVX::applyRotateX(StateVector& sv, size_t target, do
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "RotateX applied in: " << ms.count() << " ms \n";
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "RotateX applied in: " << ms.count() << " ms \n";
+    }
 }
 
 void CircuitUnitaryOperationAVX::applyRotateY(StateVector& sv, size_t target, double theta) {
@@ -254,9 +261,10 @@ void CircuitUnitaryOperationAVX::applyRotateY(StateVector& sv, size_t target, do
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "RotateY applied in: " << ms.count() << " ms \n";
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "RotateY applied in: " << ms.count() << " ms \n";
+    }
 }
 
 void CircuitUnitaryOperationAVX::applyPhase(StateVector& sv, size_t q, double theta) {
@@ -295,9 +303,10 @@ void CircuitUnitaryOperationAVX::applyPhase(StateVector& sv, size_t q, double th
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "Phase applied in: " << ms.count() << " ms \n"; //Debug timing
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "Phase applied in: " << ms.count() << " ms \n";
+    }
 }
 
 void CircuitUnitaryOperationAVX::applyRotateZ(StateVector& sv, size_t target, double theta) {
@@ -341,9 +350,10 @@ void CircuitUnitaryOperationAVX::applyRotateZ(StateVector& sv, size_t target, do
             _mm256_storeu_pd(&amplitudes_ptr[idx1 * 2], res1);
         }
     }
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "RotateZ applied in: " << ms.count() << " ms \n"; //Debug timing
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "RotateZ applied in: " << ms.count() << " ms \n";
+    }
 }
 
 void CircuitUnitaryOperationAVX::applyCNOT(StateVector& sv, size_t control, size_t target) {
@@ -376,9 +386,10 @@ void CircuitUnitaryOperationAVX::applyCNOT(StateVector& sv, size_t control, size
         std::swap(states[idx0], states[idx1]);
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "CNOT applied in: " << ms.count() << " ms \n"; //Debug timing
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "CNOT applied in: " << ms.count() << " ms \n";
+    }
 }
 
 void CircuitUnitaryOperationAVX::applyPauliX(StateVector& sv, size_t target) {
@@ -412,16 +423,136 @@ void CircuitUnitaryOperationAVX::applyPauliX(StateVector& sv, size_t target) {
             _mm256_storeu_pd(&amplitudes_ptr[idx1 * 2], v0);
         }
     }
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "PauliX applied in: " << ms.count() << " ms \n";
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "PauliX applied in: " << ms.count() << " ms \n";
+    }
+}
+
+void CircuitUnitaryOperationAVX::applySwap(StateVector& sv, size_t q0, size_t q1) {
+    auto& amplitudes = sv.data();
+    double* ptr = reinterpret_cast<double*>(amplitudes.data());
+    size_t size = amplitudes.size();
+
+    size_t mask0 = 1ULL << q0;
+    size_t mask1 = 1ULL << q1;
+    size_t min_q = std::min(q0, q1);
+    size_t max_q = std::max(q0, q1);
+    size_t low_mask = (1ULL << min_q) - 1;
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    if (min_q >= 1) {
+        // Consecutive k pairs map to adjacent state indices — load 2 complex numbers at once.
+        #pragma omp parallel for schedule(static)
+        for (std::ptrdiff_t k = 0; k < size / 4; k += 2) {
+            size_t i = ((k >> min_q) << (min_q + 1)) | (k & low_mask);
+            size_t idx = ((i >> max_q) << (max_q + 1)) | (i & ((1ULL << max_q) - 1));
+            size_t idx01 = idx | mask0;
+            size_t idx10 = idx | mask1;
+
+            __m256d v01 = _mm256_loadu_pd(&ptr[idx01 * 2]);
+            __m256d v10 = _mm256_loadu_pd(&ptr[idx10 * 2]);
+            _mm256_storeu_pd(&ptr[idx01 * 2], v10);
+            _mm256_storeu_pd(&ptr[idx10 * 2], v01);
+        }
+    } else {
+        // min_q == 0: pairs are not adjacent, process one complex at a time.
+        #pragma omp parallel for schedule(static)
+        for (std::ptrdiff_t k = 0; k < size / 4; ++k) {
+            size_t i = ((k >> min_q) << (min_q + 1)) | (k & low_mask);
+            size_t idx = ((i >> max_q) << (max_q + 1)) | (i & ((1ULL << max_q) - 1));
+            size_t idx01 = idx | mask0;
+            size_t idx10 = idx | mask1;
+
+            __m128d v01 = _mm_loadu_pd(&ptr[idx01 * 2]);
+            __m128d v10 = _mm_loadu_pd(&ptr[idx10 * 2]);
+            _mm_storeu_pd(&ptr[idx01 * 2], v10);
+            _mm_storeu_pd(&ptr[idx10 * 2], v01);
+        }
+    }
+
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "Swap applied in: " << ms.count() << " ms \n";
+    }
+}
+
+void CircuitUnitaryOperationAVX::applyMCPhase(StateVector& sv, const std::vector<size_t>& controls, size_t target, double theta) {
+    auto& amplitudes = sv.data();
+    double* ptr = reinterpret_cast<double*>(amplitudes.data());
+    size_t size = sv.size();
+
+    // Collect and sort all pinned qubits (controls + target)
+    std::vector<size_t> pinned = controls;
+    pinned.push_back(target);
+    std::sort(pinned.begin(), pinned.end());
+
+    size_t n_pinned = pinned.size();
+    size_t all_mask = 0;
+    for (size_t q : pinned) all_mask |= (1ULL << q);
+
+    // Number of free-bit combinations = states that will be modified
+    size_t n_free = size >> n_pinned;
+    size_t min_pinned = pinned[0];
+
+    double c = std::cos(theta);
+    double s = std::sin(theta);
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    // Expand a free-bit raw index into the full state index by inserting 0-bits
+    // at each sorted pinned position, then set all pinned bits to 1.
+    // Applying insertions in sorted order (smallest first) is correct because
+    // each insertion shifts only bits above it, leaving subsequent pinned
+    // positions still at their original slot indices.
+    auto make_idx = [&](size_t raw) -> size_t {
+        size_t idx = raw;
+        for (size_t p : pinned)
+            idx = ((idx >> p) << (p + 1)) | (idx & ((1ULL << p) - 1));
+        return idx | all_mask;
+    };
+
+    if (min_pinned >= 1) {
+        // Bit 0 is free, so consecutive raw pairs (2k, 2k+1) map to adjacent
+        // state indices. Load both with a single AVX2 256-bit read.
+        __m256d vec_c = _mm256_set1_pd(c);
+        __m256d vec_s = _mm256_setr_pd(-s, s, -s, s); // re*c - im*s, im*c + re*s
+
+        #pragma omp parallel for schedule(static)
+        for (std::ptrdiff_t k = 0; k < static_cast<std::ptrdiff_t>(n_free); k += 2) {
+            size_t idx = make_idx(static_cast<size_t>(k)); // lower of the adjacent pair
+            __m256d v     = _mm256_loadu_pd(&ptr[idx * 2]);
+            __m256d v_swp = _mm256_permute_pd(v, 0x05);
+            __m256d res   = _mm256_add_pd(_mm256_mul_pd(v, vec_c), _mm256_mul_pd(v_swp, vec_s));
+            _mm256_storeu_pd(&ptr[idx * 2], res);
+        }
+    } else {
+        // Bit 0 is pinned — matching states are not adjacent.  Use SSE2 for
+        // one complex number at a time.
+        __m128d vec_c = _mm_set1_pd(c);
+        __m128d vec_s = _mm_setr_pd(-s, s);
+
+        #pragma omp parallel for schedule(static)
+        for (std::ptrdiff_t k = 0; k < static_cast<std::ptrdiff_t>(n_free); ++k) {
+            size_t idx = make_idx(static_cast<size_t>(k));
+            __m128d v     = _mm_loadu_pd(&ptr[idx * 2]);
+            __m128d v_swp = _mm_permute_pd(v, 0x01);
+            __m128d res   = _mm_add_pd(_mm_mul_pd(v, vec_c), _mm_mul_pd(v_swp, vec_s));
+            _mm_storeu_pd(&ptr[idx * 2], res);
+        }
+    }
+
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "MCPhase applied in: " << ms.count() << " ms \n";
+    }
 }
 
 //methods bellow shold be changed
 
 void CircuitUnitaryOperationAVX::applyGate(StateVector& sv, const Gate2x2& gate, size_t q) {
     std::vector<std::complex<double>>& states = sv.data();
-    size_t N = sv.qubits();
     size_t size = sv.size();
 
     size_t sectionSize = 1ULL << q;
@@ -440,7 +571,63 @@ void CircuitUnitaryOperationAVX::applyGate(StateVector& sv, const Gate2x2& gate,
         states[i1] = gate.data[1][0] * low + gate.data[1][1] * high;
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> ms = end - start;
-    std::cout << "Gate applied in: " << ms.count() << " ms \n"; //Debug timing
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "Gate applied in: " << ms.count() << " ms \n";
+    }
 }
+
+void CircuitUnitaryOperationAVX::applyCPhase(StateVector& sv, size_t control, size_t target, double theta) {
+    auto& amplitudes = sv.data();
+    double* ptr = reinterpret_cast<double*>(amplitudes.data());
+    size_t size = sv.size();
+
+    size_t min_q = std::min(control, target);
+    size_t max_q = std::max(control, target);
+    size_t low_mask = (1ULL << min_q) - 1;
+
+    double c = std::cos(theta);
+    double s = std::sin(theta);
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    if (min_q >= 1) {
+        // Consecutive k pairs → adjacent state indices → process 2 complex numbers at once.
+        __m256d vec_c = _mm256_set1_pd(c);
+        __m256d vec_s = _mm256_setr_pd(-s, s, -s, s); // multiply swapped im/re: re*c-im*s, im*c+re*s
+
+        #pragma omp parallel for
+        for (std::ptrdiff_t k = 0; k < size / 4; k += 2) {
+            size_t i1  = ((k >> min_q) << (min_q + 1)) | (k & low_mask);
+            size_t idx = ((i1 >> max_q) << (max_q + 1)) | (i1 & ((1ULL << max_q) - 1));
+            idx |= (1ULL << control) | (1ULL << target);
+
+            __m256d v     = _mm256_loadu_pd(&ptr[idx * 2]);
+            __m256d v_swp = _mm256_permute_pd(v, 0x05); // swap re/im within each complex
+            __m256d res   = _mm256_add_pd(_mm256_mul_pd(v, vec_c), _mm256_mul_pd(v_swp, vec_s));
+            _mm256_storeu_pd(&ptr[idx * 2], res);
+        }
+    } else {
+        // min_q == 0: pairs not adjacent, one complex at a time via SSE2.
+        __m128d vec_c = _mm_set1_pd(c);
+        __m128d vec_s = _mm_setr_pd(-s, s);
+
+        #pragma omp parallel for
+        for (std::ptrdiff_t k = 0; k < size / 4; ++k) {
+            size_t i1  = ((k >> min_q) << (min_q + 1)) | (k & low_mask);
+            size_t idx = ((i1 >> max_q) << (max_q + 1)) | (i1 & ((1ULL << max_q) - 1));
+            idx |= (1ULL << control) | (1ULL << target);
+
+            __m128d v     = _mm_loadu_pd(&ptr[idx * 2]);
+            __m128d v_swp = _mm_permute_pd(v, 0x01);
+            __m128d res   = _mm_add_pd(_mm_mul_pd(v, vec_c), _mm_mul_pd(v_swp, vec_s));
+            _mm_storeu_pd(&ptr[idx * 2], res);
+        }
+    }
+
+    if (print_steps) {
+        std::chrono::duration<double, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "CPhase applied in: " << ms.count() << " ms \n";
+    }
+}
+

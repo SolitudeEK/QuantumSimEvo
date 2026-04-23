@@ -2,7 +2,6 @@
 
 #include <bitset>
 #include <iostream>
-#include <unordered_map>
 #include <unordered_set>
 
 #include "../QuantumSimEvo/Circuit.h"
@@ -139,7 +138,7 @@ void QAOA::runQAOA(int p,
         }
     }
 
-    circuit.execute();
+    circuit.execute(false);
 	circuit.printState();
 
 	auto results = circuit.sample(shots);

@@ -20,7 +20,7 @@ PYBIND11_MODULE(QuantumSimEvo, m) {
         .def("rotate_z", &Circuit::rotateZ, py::arg("theta"), py::arg("q"))
 		.def("cnot", &Circuit::cnot, py::arg("control"), py::arg("target"))
         .def("execute", &Circuit::execute, py::arg("print_steps") = false)
-		.def("measure", &Circuit::measure)
+		//.def("measure", &Circuit::measure)
 		.def("print_state", &Circuit::printState)
         .def("reset", &Circuit::reset);
 }

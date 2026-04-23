@@ -28,7 +28,7 @@ private:
     {
         qc->reset();
         gateFunc(*qc);
-        qc->execute(false);
+        qc->execute(true);
 
         auto& actualState = qc->getStateVector().data();
         bool success = true;
@@ -49,7 +49,7 @@ private:
         return success;
     }
 
-    std::string benchmark(std::string name, std::function<void(Circuit&)> gateFunc, size_t iterations = 5) {
+    std::string benchmark(std::string name, std::function<void(Circuit&)> gateFunc, size_t iterations = 10) {
 
         qc->reset();
 
@@ -117,6 +117,58 @@ private:
             { {re, -im}, {0, 0} });
     }
 
+    bool testSwap() {
+        bool ok = true;
+        const double tol = 1e-12;
+        const double s = 1.0 / std::sqrt(2.0);
+
+        struct SwapCase {
+            std::string name;
+            std::function<void(Circuit&)> setup;
+            std::vector<std::complex<double>> expected;
+        };
+
+        // Qubit 0 is LSB: index = q1*2 + q0
+        // |00>=idx0, |01>=idx1 (q0=1), |10>=idx2 (q1=1), |11>=idx3
+        std::vector<SwapCase> cases = {
+            { "|00> unchanged",
+              [](Circuit& c) { c.swap(0, 1); },
+              { {1,0},{0,0},{0,0},{0,0} } },
+            { "|01> -> |10>",
+              [](Circuit& c) { c.pauliX(0); c.swap(0, 1); },
+              { {0,0},{0,0},{1,0},{0,0} } },
+            { "|10> -> |01>",
+              [](Circuit& c) { c.pauliX(1); c.swap(0, 1); },
+              { {0,0},{1,0},{0,0},{0,0} } },
+            { "H(0) superposition",
+              [](Circuit& c) { c.hadamard(0); c.swap(0, 1); },
+              { {s,0},{0,0},{s,0},{0,0} } },
+            { "SWAP is self-inverse",
+              [](Circuit& c) { c.pauliX(0); c.swap(0, 1); c.swap(0, 1); },
+              { {0,0},{1,0},{0,0},{0,0} } },
+        };
+
+        for (auto& tc : cases) {
+            Circuit c(2);
+            tc.setup(c);
+            c.execute(true);
+            auto& actual = c.getStateVector().data();
+            for (size_t i = 0; i < tc.expected.size(); ++i) {
+                double dr = std::abs(actual[i].real() - tc.expected[i].real());
+                double di = std::abs(actual[i].imag() - tc.expected[i].imag());
+                if (dr > tol || di > tol) {
+                    ok = false;
+                    setConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
+                    std::cout << "[FAIL] Swap/" << tc.name << " index " << i
+                              << "\n   Expected: " << tc.expected[i]
+                              << "\n   Actual:   " << actual[i] << "\n";
+                    setConsoleColor(7);
+                }
+            }
+        }
+        return ok;
+    }
+
     static void setConsoleColor(WORD color) {
         SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
     }
@@ -141,6 +193,7 @@ public:
         results.push_back({ "RotateX",  testRotateX() });
         results.push_back({ "RotateY",  testRotateY() });
         results.push_back({ "RotateZ",  testRotateZ() });
+        results.push_back({ "Swap",     testSwap() });
 
         // Final Report
         std::cout << "\n--- TEST SUMMARY ---\n";
@@ -184,6 +237,7 @@ public:
         benchmarkResults.push_back(benchmark("RotateY   ", [](Circuit& c) { c.rotateY(PI / 2.0, 0); }));
         benchmarkResults.push_back(benchmark("RotateZ   ", [](Circuit& c) { c.rotateZ(PI / 2.0, 0); }));
 		benchmarkResults.push_back(benchmark("CNOT      ", [](Circuit& c) { c.cnot(0, 1); }));
+		benchmarkResults.push_back(benchmark("Swap      ", [](Circuit& c) { c.swap(0, 1); }));
 
 		std::cout << "\n------- Benchmark Summary for " << n << " Qubits -------\n";
         std::cout << "-----------------------------------------------\n";

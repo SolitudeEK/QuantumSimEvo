@@ -38,6 +38,8 @@ public:
 
 	void reset();
     size_t measure();
+    int measureQubit(size_t qubit); // Partial measurement: collapses one qubit, returns 0 or 1
+    void resetQubit(size_t qubit);  // Measures qubit, conditionally flips to |0>, always leaves qubit in |0>
     std::vector<size_t> sample(int numShots);
     void applyUnitaryOperation(const Gate2x2& gate, size_t targetQubit);
     void printState();

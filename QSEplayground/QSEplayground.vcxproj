@@ -138,8 +138,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Grover.cpp" />
     <ClCompile Include="QAOA.cpp" />
+    <ClCompile Include="QFT.cpp" />
     <ClCompile Include="QSEplayground.cpp" />
+    <ClCompile Include="Shor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\QuantumSimEvo\QuantumSimEvo.vcxproj">
@@ -147,7 +150,10 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Grover.h" />
     <ClInclude Include="QAOA.h" />
+    <ClInclude Include="QFT.h" />
+    <ClInclude Include="Shor.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

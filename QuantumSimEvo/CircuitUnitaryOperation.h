@@ -3,6 +3,7 @@
 #include "StateVector.h"
 #include "ICircuitUnitaryOperation.h"
 #include <omp.h>
+#include <vector>
 
 class CircuitUnitaryOperation : public ICircuitUnitaryOperation {
 public:
@@ -16,6 +17,9 @@ public:
     void applyRotateY(StateVector& sv, size_t q, double theta) override;
     void applyRotateZ(StateVector& sv, size_t q, double theta) override;
     void applyHadamard(StateVector& sv, size_t targetQubit) override;
+    void applyCPhase(StateVector& sv, size_t control, size_t target, double theta) override;
+    void applyMCPhase(StateVector& sv, const std::vector<size_t>& controls, size_t target, double theta) override;
+    void applySwap(StateVector& sv, size_t q0, size_t q1) override;
 };
 
 #endif

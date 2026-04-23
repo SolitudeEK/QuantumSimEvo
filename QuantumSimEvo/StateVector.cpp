@@ -31,18 +31,20 @@ StateVector::StateVector(size_t num) : numQubits(num) {
 	std::cout << "Memory allocation done in: " << ms.count() << " ms \n"; //Debug timing
 }
 
-void StateVector::reset() {
+void StateVector::reset()
+{
 	auto start = std::chrono::high_resolution_clock::now();
 
 	#pragma omp parallel for
 	for (std::ptrdiff_t i = 0; i < (std::ptrdiff_t)stateSize; ++i)
-		stateVector[i] = (i == 0) ? Complex{ 1.0, 0.0 } : Complex{ 0.0, 0.0 };
-	
+		stateVector[i] = (i == 0) ? Complex{1.0, 0.0} : Complex{0.0, 0.0};
+
 
 	auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> ms = end - start;
 	std::cout << "Memory cleaning done in: " << ms.count() << " ms \n";
 }
+
 /*size_t StateVector::measure() { v1
 	std::vector<double> probs(stateSize);
 	double totalProb = 0.0;
@@ -80,40 +82,31 @@ std::vector<size_t> StateVector::sample(int numShots) {
 	auto start = std::chrono::high_resolution_clock::now();
 
 
-#pragma omp parallel for
+	#pragma omp parallel for
 	for (std::ptrdiff_t i = 0; i < size; ++i) {
 		cumulative[i] = std::norm(stateVector[i]);
 	}
 
-	// 2. Compute Cumulative Distribution (Scanning)
-	// This part is inherently serial, but for 65k elements it is very fast
 	for (size_t i = 1; i < size; ++i) {
 		cumulative[i] += cumulative[i - 1];
 	}
 
-	// Normalizing the last element to handle floating point precision
 	double totalProb = cumulative[size - 1];
 
-	// 3. Parallel Sampling (The "Many Shots" part)
-#pragma omp parallel
+	#pragma omp parallel
 	{
-		// Give each thread its own random engine to avoid race conditions
 		std::random_device rd;
 		std::mt19937 gen(rd() ^ omp_get_thread_num());
 		std::uniform_real_distribution<double> dist(0.0, totalProb);
 
-#pragma omp for
+		#pragma omp for
 		for (int s = 0; s < numShots; ++s) {
 			double target = dist(gen);
 
-			// Binary search to find the index (O(log N))
-			// This is much faster than a linear loop for large state vectors
 			auto it = std::lower_bound(cumulative.begin(), cumulative.end(), target);
 			results[s] = std::distance(cumulative.begin(), it);
 		}
 	}
-
-	return results;
 
 	auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> ms = end - start;
@@ -160,6 +153,75 @@ size_t StateVector::measure() {
 	std::cout << "Measure done in: " << ms.count() << " ms \n";
 
 	return collapsedState;
+}
+
+int StateVector::measureQubit(size_t qubit) {
+	auto start = std::chrono::high_resolution_clock::now();
+
+	size_t bit = 1ULL << qubit;
+	double prob1 = 0.0;
+
+	#pragma omp parallel for reduction(+:prob1)
+	for (std::ptrdiff_t i = 0; i < (std::ptrdiff_t)stateSize; ++i)
+		if (i & bit) prob1 += std::norm(stateVector[i]);
+
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<double> dist(0.0, 1.0);
+	int outcome = (dist(gen) < prob1) ? 1 : 0;
+
+	double norm = (outcome == 1) ? std::sqrt(prob1) : std::sqrt(1.0 - prob1);
+
+	#pragma omp parallel for
+	for (std::ptrdiff_t i = 0; i < (std::ptrdiff_t)stateSize; ++i) {
+		bool qubitIsOne = (i & bit) != 0;
+		if (qubitIsOne != (outcome == 1))
+			stateVector[i] = 0.0;
+		else
+			stateVector[i] /= norm;
+	}
+
+	auto end = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double, std::milli> ms = end - start;
+	std::cout << "Qubit " << qubit << " measured: " << outcome << " in " << ms.count() << " ms\n";
+
+	return outcome;
+}
+
+void StateVector::resetQubit(size_t qubit) {
+	auto start = std::chrono::high_resolution_clock::now();
+
+	size_t bit = 1ULL << qubit;
+	double prob1 = 0.0;
+
+	#pragma omp parallel for reduction(+:prob1)
+	for (std::ptrdiff_t i = 0; i < (std::ptrdiff_t)stateSize; ++i)
+		if (i & bit) prob1 += std::norm(stateVector[i]);
+
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	int outcome = (std::uniform_real_distribution<double>(0.0, 1.0)(gen) < prob1) ? 1 : 0;
+
+	double normFactor = std::sqrt(outcome ? prob1 : 1.0 - prob1);
+	size_t halfState = stateSize >> 1;
+	size_t lowerMask = bit - 1;
+
+	// Collapse to the measured outcome, then move all amplitude to the |0> component
+	#pragma omp parallel for
+	for (std::ptrdiff_t i = 0; i < (std::ptrdiff_t)halfState; ++i) {
+		size_t idx0 = ((i & ~lowerMask) << 1) | (i & lowerMask);
+		size_t idx1 = idx0 | bit;
+		if (outcome == 0) {
+			stateVector[idx0] /= normFactor;
+		} else {
+			stateVector[idx0] = stateVector[idx1] / normFactor;
+		}
+		stateVector[idx1] = 0.0;
+	}
+
+	auto end = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double, std::milli> ms = end - start;
+	std::cout << "Qubit " << qubit << " reset to |0> in " << ms.count() << " ms\n";
 }
 
 void  StateVector::applyUnitaryOperation(const Gate2x2& gate, size_t targetQubit) {

@@ -1,13 +1,26 @@
 #include <bitset>
+#include <chrono>
 #include<numbers>
 #include <unordered_map>
+
+#include "Grover.h"
 #include "../QuantumSimEvo/Circuit.h"
 #include "../QuantumSimEvo/HardwareCheck.h"
 #include "QAOA.h"
+#include "QFT.h"
+#include "Shor.h"
 
 using namespace std;
 
-int main()
+int main(){
+	//Shor::runShor(33, 5);
+	//QFT::runIQFT(29, 100);
+	//Grover::runGrover( 536870891, 1000);
+    Grover::runGrover(2621344, 1000);
+    return 0;
+}
+
+int qaoa()
 {
     vector<float> gamma { numbers::pi / 8, numbers::pi / 8, numbers::pi / 8 };
     vector<float> beta { numbers::pi / 3, numbers::pi / 3, numbers::pi / 3};
@@ -43,8 +56,14 @@ int main()
 
     size_t p = 3;
 
-	QAOA::runQAOA(p, nodes, edges, gamma, beta, 70000);
+	auto start = std::chrono::high_resolution_clock::now();
+
+	QAOA::runQAOA(p, nodes, edges, gamma, beta, 1500000);
 	QAOA::bruteForceMaxCut(nodes.size(), edges);
+
+	auto end = std::chrono::high_resolution_clock::now();
+	cout << "Total execution time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms\n";
+
 	return 0;
 }
 
@@ -129,5 +148,7 @@ void ghz()
         cout << "|" << bitset<64>(element.first).to_string().substr(64 - n) << "> appeared " << element.second << " times out of " << k << endl;
     }
 }
+
+
 
 

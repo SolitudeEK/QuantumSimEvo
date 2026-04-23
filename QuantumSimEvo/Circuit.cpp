@@ -2,7 +2,7 @@
 #include "Structurs.h"
 #include "CircuitUnitaryOperationFactory.h"
 
-Circuit::Circuit(size_t N, bool simulatePauliNoise) : numQubits(N), stateVector(N), pauliNoise(N, 42, 1), simulateNoise(simulatePauliNoise) {
+Circuit::Circuit(size_t N, bool simulatePauliNoise) : stateVector(N), simulateNoise(simulatePauliNoise), pauliNoise(N, 42, 1) {
     circuitOp = CircuitUnitaryOperationFactory::create();
 }
 
@@ -38,14 +38,45 @@ void Circuit::phase(double theta, size_t q) {
     commands.push_back({ GateType::PHASE, q, 0, theta, "Phase shift on qubit " + std::to_string(q) });
 }
 
+size_t Circuit::measure(size_t q) {
+    size_t resultIdx = measurementResults.size();
+    measurementResults.push_back(-1); // placeholder, filled during execute()
+    commands.push_back({ GateType::MEASURE, q, 0, 0.0,
+        "Measure qubit " + std::to_string(q) + " -> result[" + std::to_string(resultIdx) + "]",
+        resultIdx });
+    return resultIdx;
+}
+
+void Circuit::resetQubit(size_t q) {
+    commands.push_back({ GateType::RESET_QUBIT, q, 0, 0.0, "Reset qubit " + std::to_string(q) + " to |0>" });
+}
+
 void Circuit::cnot(size_t control, size_t target) {
     commands.push_back({ GateType::CNOT, target, control, 0.0,
     "CNOT (control: " + std::to_string(control) + ", target: " + std::to_string(target) + ")" });
 }
 
+void Circuit::cphase(double theta, size_t control, size_t target) {
+    commands.push_back({ GateType::CPHASE, target, control, theta,
+    "CPhase (theta: " + std::to_string(theta) + ", control: " + std::to_string(control) + ", target: " + std::to_string(target) + ")" });
+}
+
+void Circuit::mcphase(double theta, const std::vector<size_t>& controls, size_t target) {
+    std::string desc = "MCPhase (theta: " + std::to_string(theta) + ", target: " + std::to_string(target) + ", controls:";
+    for (size_t c : controls) desc += " " + std::to_string(c);
+    desc += ")";
+    GateCommand cmd{ GateType::MCPHASE, target, 0, theta, desc, 0, controls };
+    commands.push_back(cmd);
+}
+
+void Circuit::swap(size_t q0, size_t q1) {
+    commands.push_back({ GateType::SWAP, q0, q1, 0.0,
+    "SWAP (q0: " + std::to_string(q0) + ", q1: " + std::to_string(q1) + ")" });
+}
+
 void Circuit::execute(bool print_steps) {
     if (print_steps) std::cout << "Initial state: |0...0>\n";
-
+	circuitOp->setPrintSteps(print_steps);
     for (const auto& cmd : commands) {
         if (print_steps) std::cout << "Executing: " << cmd.description << std::endl;
 
@@ -71,6 +102,15 @@ void Circuit::execute(bool print_steps) {
         case GateType::CNOT:
             circuitOp->applyCNOT(stateVector, cmd.control, cmd.target);
             break;
+        case GateType::CPHASE:
+            circuitOp->applyCPhase(stateVector, cmd.control, cmd.target, cmd.theta);
+            break;
+        case GateType::MCPHASE:
+            circuitOp->applyMCPhase(stateVector, cmd.controls_list, cmd.target, cmd.theta);
+            break;
+        case GateType::SWAP:
+            circuitOp->applySwap(stateVector, cmd.target, cmd.control);
+            break;
         case GateType::Y:
             circuitOp->applyPauliY(stateVector, cmd.target);
             break;
@@ -79,6 +119,12 @@ void Circuit::execute(bool print_steps) {
             break;
         case GateType::Z:
             circuitOp->applyPauliZ(stateVector, cmd.target);
+            break;
+        case GateType::MEASURE:
+            measurementResults[cmd.resultIdx] = stateVector.measureQubit(cmd.target);
+            break;
+        case GateType::RESET_QUBIT:
+            stateVector.resetQubit(cmd.target);
             break;
         default:
             std::cerr << "Unsupported gate type: " << static_cast<int>(cmd.type) << std::endl;
@@ -101,6 +147,7 @@ void Circuit::reset() {
     if (simulateNoise)
         pauliNoise.resetStats();
     commands.clear();
+    measurementResults.clear();
 }
 
 void Circuit::printState() {

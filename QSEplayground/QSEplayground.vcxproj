@@ -143,6 +143,7 @@
     <ClCompile Include="QFT.cpp" />
     <ClCompile Include="QSEplayground.cpp" />
     <ClCompile Include="Shor.cpp" />
+    <ClCompile Include="TVS.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\QuantumSimEvo\QuantumSimEvo.vcxproj">
@@ -154,6 +155,7 @@
     <ClInclude Include="QAOA.h" />
     <ClInclude Include="QFT.h" />
     <ClInclude Include="Shor.h" />
+    <ClInclude Include="TVS.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -3,7 +3,7 @@
 #include "CircuitUnitaryOperationFactory.h"
 
 Circuit::Circuit(size_t N, bool simulatePauliNoise) : stateVector(N), simulateNoise(simulatePauliNoise), pauliNoise(N, 42, 1) {
-    circuitOp = CircuitUnitaryOperationFactory::create();
+    circuitOp = CircuitUnitaryOperationFactory::create(N);
 }
 
 void Circuit::hadamard(size_t q) {
@@ -36,19 +36,6 @@ void Circuit::rotateY(double theta, size_t q) {
 
 void Circuit::phase(double theta, size_t q) {
     commands.push_back({ GateType::PHASE, q, 0, theta, "Phase shift on qubit " + std::to_string(q) });
-}
-
-size_t Circuit::measure(size_t q) {
-    size_t resultIdx = measurementResults.size();
-    measurementResults.push_back(-1); // placeholder, filled during execute()
-    commands.push_back({ GateType::MEASURE, q, 0, 0.0,
-        "Measure qubit " + std::to_string(q) + " -> result[" + std::to_string(resultIdx) + "]",
-        resultIdx });
-    return resultIdx;
-}
-
-void Circuit::resetQubit(size_t q) {
-    commands.push_back({ GateType::RESET_QUBIT, q, 0, 0.0, "Reset qubit " + std::to_string(q) + " to |0>" });
 }
 
 void Circuit::cnot(size_t control, size_t target) {
@@ -120,40 +107,37 @@ void Circuit::execute(bool print_steps) {
         case GateType::Z:
             circuitOp->applyPauliZ(stateVector, cmd.target);
             break;
-        case GateType::MEASURE:
-            measurementResults[cmd.resultIdx] = stateVector.measureQubit(cmd.target);
-            break;
-        case GateType::RESET_QUBIT:
-            stateVector.resetQubit(cmd.target);
-            break;
         default:
             std::cerr << "Unsupported gate type: " << static_cast<int>(cmd.type) << std::endl;
         }
     }
 
     if (simulateNoise)
-        pauliNoise.applyPauliNoise(stateVector);
+        pauliNoise.applyPauliNoise(stateVector, *circuitOp);
     if (print_steps)
         std::cout << "Total of occured errors: \n BitFlips:" << pauliNoise.getTotalBitFlips()
 	<< " times\n PhaseFlips:" << pauliNoise.getTotalPhaseFlips() << " times.\n";
 }
 
 size_t Circuit::measure() {
+    circuitOp->flush();
     return stateVector.measure();
 }
 
 void Circuit::reset() {
     stateVector.reset();
+    circuitOp->markHostDirty();
     if (simulateNoise)
         pauliNoise.resetStats();
     commands.clear();
-    measurementResults.clear();
 }
 
 void Circuit::printState() {
+    circuitOp->flush();
     stateVector.printState();
 }
 
 std::vector<size_t> Circuit::sample(int numShots){
-	return stateVector.sample(numShots);
+    circuitOp->flush();
+    return stateVector.sample(numShots);
 }

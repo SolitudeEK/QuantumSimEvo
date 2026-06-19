@@ -30,6 +30,9 @@
     <ClCompile Include="Grover.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TVS.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="QAOA.h">
@@ -42,6 +45,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Grover.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TVS.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

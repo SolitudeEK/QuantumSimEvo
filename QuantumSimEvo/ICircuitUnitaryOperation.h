@@ -9,6 +9,13 @@ public:
 
     void setPrintSteps(bool value) { print_steps = value; }
 
+    // Backends that mirror state on a device (e.g. GPU) override these.
+    // flush(): copy device -> host so the host StateVector is current.
+    // markHostDirty(): the host StateVector was mutated externally;
+    //                  re-upload to device before the next gate.
+    virtual void flush() {}
+    virtual void markHostDirty() {}
+
 	virtual void applyGate(StateVector& sv, const Gate2x2& gate, size_t q) = 0;
 	virtual void applyCNOT(StateVector& sv, size_t control, size_t target) = 0;
 	virtual void applyPauliX(StateVector& sv, size_t q) = 0;

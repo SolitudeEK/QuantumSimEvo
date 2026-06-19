@@ -117,6 +117,9 @@
       <AdditionalDependencies>cudart.lib;libirc.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>-lclang_rt.builtins-x86_64 %(AdditionalOptions)</AdditionalOptions>
     </Link>
+    <CudaCompile>
+      <AdditionalOptions>-allow-unsupported-compiler %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -137,6 +140,9 @@
       <AdditionalDependencies>cudart.lib;libirc.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>-lclang_rt.builtins-x86_64 %(AdditionalOptions)</AdditionalOptions>
     </Link>
+    <CudaCompile>
+      <AdditionalOptions>-allow-unsupported-compiler %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Circuit.cpp" />
@@ -151,10 +157,14 @@
     <ClCompile Include="Structurs.h" />
   </ItemGroup>
   <ItemGroup>
+    <CudaCompile Include="CircuitUnitaryOperationGPU.cu" />
+  </ItemGroup>
+  <ItemGroup>
     <ClInclude Include="Circuit.h" />
     <ClInclude Include="CircuitUnitaryOperation.h" />
     <ClInclude Include="CircuitUnitaryOperationAVX.h" />
     <ClInclude Include="CircuitUnitaryOperationFactory.h" />
+    <ClInclude Include="CircuitUnitaryOperationGPU.h" />
     <ClInclude Include="Dirac.h" />
     <ClInclude Include="HardwareCheck.h">
       <DeploymentContent>false</DeploymentContent>

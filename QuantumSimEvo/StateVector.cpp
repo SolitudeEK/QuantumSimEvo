@@ -181,10 +181,6 @@ int StateVector::measureQubit(size_t qubit) {
 			stateVector[i] /= norm;
 	}
 
-	auto end = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double, std::milli> ms = end - start;
-	std::cout << "Qubit " << qubit << " measured: " << outcome << " in " << ms.count() << " ms\n";
-
 	return outcome;
 }
 

@@ -17,14 +17,14 @@ private:
 	std::vector<int> phaseFlipCounts;
 	std::map<GateType, double> errorRates;
 
-	std::unique_ptr <ICircuitUnitaryOperation> circuitOp;
 	double errorMultiplier;
 	std::mt19937 gen;
 	std::uniform_real_distribution<double> dist;
 public:
 	Noise(size_t N, unsigned int seed=42, double errorRateMultiplayer=1);
 
-	void applyPauliNoise(StateVector& sv);
+	// Reuses the caller's backend so GPU device state stays consistent.
+	void applyPauliNoise(StateVector& sv, ICircuitUnitaryOperation& op);
 	void accumulateError(GateType type, size_t target);
 
 	void resetStats();

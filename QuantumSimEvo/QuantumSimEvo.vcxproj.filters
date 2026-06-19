@@ -55,6 +55,11 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <CudaCompile Include="CircuitUnitaryOperationGPU.cu">
+      <Filter>Sim</Filter>
+    </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
     <ClInclude Include="HardwareCheck.h">
       <Filter>Hardware</Filter>
     </ClInclude>
@@ -84,6 +89,9 @@
       <Filter>Sim\Header</Filter>
     </ClInclude>
     <ClInclude Include="Noise.h">
+      <Filter>Sim\Header</Filter>
+    </ClInclude>
+    <ClInclude Include="CircuitUnitaryOperationGPU.h">
       <Filter>Sim\Header</Filter>
     </ClInclude>
   </ItemGroup>

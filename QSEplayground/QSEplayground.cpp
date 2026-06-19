@@ -9,22 +9,46 @@
 #include "QAOA.h"
 #include "QFT.h"
 #include "Shor.h"
+#include "TVS.h"
 
 using namespace std;
 
-int main(){
-	//Shor::runShor(33, 5);
-	//QFT::runIQFT(29, 100);
-	//Grover::runGrover( 536870891, 1000);
-    Grover::runGrover(2621344, 1000);
+int tsp()
+{
+    // 3 cities -> 9 qubits
+    std::vector<std::vector<double>> dist3 = {
+        {0, 3, 4},
+        {3, 0, 5},
+        {4, 5, 0}
+    };
+
+    // 4 cities -> 16 qubits
+    std::vector<std::vector<double>> dist4 = {
+        {0, 3, 4, 2},
+        {3, 0, 5, 7},
+        {4, 5, 0, 6},
+        {2, 7, 6, 0}
+    };
+
+	// 5 cities -> 25 qubits (heavy: large state vector and deep circuit)
+	std::vector<std::vector<double>> dist5 = {
+	    {0,  3,  4,  2,  7},
+	    {3,  0,  5,  7,  6},
+	    {4,  5,  0,  6,  3},
+	    {2,  7,  6,  0,  5},
+	    {7,  6,  3,  5,  0}
+	};
+
+    TVS::runTVS(dist5, -1, 1, 0.8, 0.4, 100000);
+
     return 0;
 }
 
 int qaoa()
 {
-    vector<float> gamma { numbers::pi / 8, numbers::pi / 8, numbers::pi / 8 };
-    vector<float> beta { numbers::pi / 3, numbers::pi / 3, numbers::pi / 3};
-	/*vector<int> nodes{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };*/
+    vector<float> gamma{ numbers::pi / 8, numbers::pi / 8, numbers::pi / 8 };
+    vector<float> beta{ numbers::pi / 3, numbers::pi / 3, numbers::pi / 3 };
+    /*vector<int> nodes{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };*/
 
     std::vector<int> nodes = {
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -56,15 +80,15 @@ int qaoa()
 
     size_t p = 3;
 
-	auto start = std::chrono::high_resolution_clock::now();
+    auto start = std::chrono::high_resolution_clock::now();
 
-	QAOA::runQAOA(p, nodes, edges, gamma, beta, 1500000);
-	QAOA::bruteForceMaxCut(nodes.size(), edges);
+    QAOA::runQAOA(p, nodes, edges, gamma, beta, 1500000);
+    QAOA::bruteForceMaxCut(nodes.size(), edges);
 
-	auto end = std::chrono::high_resolution_clock::now();
-	cout << "Total execution time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms\n";
+    auto end = std::chrono::high_resolution_clock::now();
+    cout << "Total execution time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms\n";
 
-	return 0;
+    return 0;
 }
 
 void bellState()
@@ -109,44 +133,60 @@ void bellState()
 
 void ghz()
 {
-    int n = 25;
+    int n = 28;
     int k = 1000;
 
-    auto distribution = new map<size_t, int>();
+    map<size_t, int> distribution;
 
     Circuit qc(n, false);
 
     cout << "-----------------------------\n";
-    cout << "Running " << k << " test circuits to verify the distribution of measurement outcomes...\n";
+    cout << "Running the GHZ circuit and drawing " << k << " samples to verify the distribution of measurement outcomes...\n";
 
-    for (int i = 0; i < k; ++i)
+    qc.hadamard(0);
+
+    for (int j = 0; j < n - 1; ++j)
     {
-        cout << "Running test circuit " << (i + 1) << endl;
+        qc.cnot(j, j + 1);
+    }
+    qc.execute();
 
-        qc.hadamard(0);
+    qc.printState();
 
-        for (int j = 0; j < n - 1; ++j)
-        {
-            qc.cnot(j, j + 1);
-        }
-        qc.execute();
-
-        qc.printState();
-
-        size_t result = qc.measure();
-
-        (*distribution)[result]++;
-
-        cout << "Measured State Index: " << result << endl;
-
-        qc.reset();
+    std::vector<size_t> samples = qc.sample(k);
+    for (size_t result : samples)
+    {
+        distribution[result]++;
     }
 
     cout << "-----------------------------\n";
-    for (const auto& element : *distribution)
+    for (const auto& element : distribution)
     {
         cout << "|" << bitset<64>(element.first).to_string().substr(64 - n) << "> appeared " << element.second << " times out of " << k << endl;
     }
+}
+
+int main() {
+
+	auto start = std::chrono::high_resolution_clock::now();
+
+    //Shor::runShor(15, 7);
+    //Shor::runShor(21, 8);
+    //Shor::runShor(33, 5);
+    //Shor::runShor(115, 11);
+    //tsp();
+	//qaoa();
+    //ghz();
+	//QFT::runIQFT(28);
+	QFT::runQFT(28, 1000);
+	//Grover::runGrover(29123321, 10000);
+    //Grover::runGrover(802008535, 10000);
+	auto end = std::chrono::high_resolution_clock::now();
+    std::cout << "Total execution time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms\n";
+
+    int res;
+    std::cin >> res;
+    return 0;
 }
 
 

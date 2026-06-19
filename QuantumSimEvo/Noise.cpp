@@ -1,7 +1,5 @@
 #include "Noise.h"
 
-#include "CircuitUnitaryOperationFactory.h"
-
 Noise::Noise(size_t N, unsigned int seed, double errorRateMultiplier) :
 	bitFlipCounts(N, 0),
 	phaseFlipCounts(N, 0),
@@ -18,8 +16,6 @@ Noise::Noise(size_t N, unsigned int seed, double errorRateMultiplier) :
 	errorRates[GateType::RX] = 0.001;
 	errorRates[GateType::RY] = 0.001;
 	errorRates[GateType::RZ] = 0.001;
-
-	circuitOp = CircuitUnitaryOperationFactory::create();
 }
 
 void Noise::accumulateError(GateType type, size_t target)
@@ -35,15 +31,15 @@ void Noise::accumulateError(GateType type, size_t target)
 
 }
 
-void Noise::applyPauliNoise(StateVector& sv)
+void Noise::applyPauliNoise(StateVector& sv, ICircuitUnitaryOperation& op)
 {
 	for (size_t q = 0; q < bitFlipCounts.size(); q++)
 	{
 		if (bitFlipCounts[q] % 2 != 0)
-			circuitOp->applyPauliX(sv, q);
+			op.applyPauliX(sv, q);
 
 		if (phaseFlipCounts[q] % 2 != 0)
-			circuitOp->applyPauliZ(sv, q);
+			op.applyPauliZ(sv, q);
 	}
 }
 

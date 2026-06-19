@@ -24,7 +24,6 @@ private:
 
     bool simulateNoise;
     Noise pauliNoise;
-    std::vector<int> measurementResults;
 public:
     // Constructor
     Circuit(size_t N, bool simulatePauliNoise = false);
@@ -46,10 +45,7 @@ public:
     // Execution & Measurement
     void execute(bool print_steps = false);
 	size_t measure(); // Collapses the full state and returns the measured value
-	size_t measure(size_t q); // Mid-circuit: queues a single-qubit measurement command, returns result index
-	void resetQubit(size_t q); // Mid-circuit: collapses qubit and forces it to |0>
 	std::vector<size_t> sample(int numShots); // Returns a vector of measurement results without collapsing the state
-	const std::vector<int>& getMeasurementResults() const { return measurementResults; }
 	void reset();
 
     // Utilities

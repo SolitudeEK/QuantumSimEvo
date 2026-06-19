@@ -52,22 +52,22 @@ void QFT::runQFT(int numQubits, int shots)
 
     createQFT(circuit, qubits);
 
-    circuit.execute(true);
+    circuit.execute(false);
 
     std::cout << "\n--- State after QFT ---\n";
-    circuit.printState();
+    /*circuit.printState();*/
 
     auto results = circuit.sample(shots);
 
-    std::map<size_t, int> counts;
-    for (size_t r : results)
-        counts[r]++;
+    //std::map<size_t, int> counts;
+    //for (size_t r : results)
+    //    counts[r]++;
 
-    std::cout << "\n--- Measurement Results (" << shots << " shots) ---\n";
-    for (auto const& [state, count] : counts) {
-        std::cout << "|" << state << "> : " << count
-                  << " (" << (100.0 * count / shots) << "%)\n";
-    }
+    //std::cout << "\n--- Measurement Results (" << shots << " shots) ---\n";
+    //for (auto const& [state, count] : counts) {
+    //    std::cout << "|" << state << "> : " << count
+    //              << " (" << (100.0 * count / shots) << "%)\n";
+    //}
 }
 
 void QFT::runIQFT(int numQubits, int shots)
@@ -86,20 +86,20 @@ void QFT::runIQFT(int numQubits, int shots)
 
     createIQFT(circuit, qubits);
 
-    circuit.execute(true);
+    circuit.execute(false);
 
     std::cout << "\n--- State after IQFT ---\n";
-    circuit.printState();
+    //circuit.printState();
 
     auto results = circuit.sample(shots);
 
-    std::map<size_t, int> counts;
-    for (size_t r : results)
-        counts[r]++;
-
-    std::cout << "\n--- Measurement Results (" << shots << " shots) ---\n";
-    for (auto const& [state, count] : counts) {
-        std::cout << "|" << state << "> : " << count
-            << " (" << (100.0 * count / shots) << "%)\n";
-    }
+//    std::map<size_t, int> counts;
+//    for (size_t r : results)
+//        counts[r]++;
+//
+//    std::cout << "\n--- Measurement Results (" << shots << " shots) ---\n";
+//    for (auto const& [state, count] : counts) {
+//        std::cout << "|" << state << "> : " << count
+//            << " (" << (100.0 * count / shots) << "%)\n";
+//    }
 }

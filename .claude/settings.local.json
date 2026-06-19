@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "WebSearch",
-      "WebFetch(domain:en.wikipedia.org)",
-      "WebFetch(domain:arxiv.org)"
-    ]
-  }
-}
